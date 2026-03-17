@@ -1,0 +1,9 @@
+<IfModule mod_headers.c>
+    # Toestaan dat elk domein licenties opvraagt (nodig voor PWA/localhost)
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET, OPTIONS"
+    Header set Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept"
+</IfModule>
+
+# Voorkom directory listing voor veiligheid
+Options -Indexes

@@ -106,7 +106,7 @@ export const checkLicense = async (
       lastCheck: 0, 
       isGracePeriod: false,
       message: error.message.toLowerCase().includes('failed') 
-        ? `Network Error: Could not reach ${sanitizedServerUrl}. Check if the server is up and supports ${sanitizedServerUrl.startsWith('https') ? 'SSL/HTTPS' : 'HTTP'}. If testing locally, ensure CORS is enabled.` 
+        ? `CORS/Network Error: Could not reach ${sanitizedServerUrl}. Ensure the server allows requests from your current origin (Access-Control-Allow-Origin). If you can see the file in your browser, copy the JSON and use 'Manual Activation'.` 
         : `Activation error: ${error.message}` 
     };
   }
