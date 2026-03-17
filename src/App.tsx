@@ -442,6 +442,26 @@ function App() {
     setMode('START');
   };
 
+  const [manualJson, setManualJson] = useState('');
+  const [showManual, setShowManual] = useState(false);
+
+  const handleManualActivate = () => {
+    try {
+      const data = JSON.parse(manualJson);
+      const hash = license?.deviceHash || 'UNKNOWN';
+      const newState = applyManualLicense(data, hash);
+      setLicense(newState);
+      if (newState.active) {
+        addLog("[App] Manual Activation Success!");
+        startup(); // Refresh configs
+      } else {
+        alert("License is not active or expired.");
+      }
+    } catch (e) {
+      alert("Invalid JSON format. Please copy the entire content from the browser.");
+    }
+  };
+
   if (mode === 'LICENSE_CHECK') {
     return (
       <div className="App" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#0f172a', padding: '20px' }}>
@@ -478,7 +498,24 @@ function App() {
                 📂 RESCUE: UPLOAD LICENSE FILE
                 <input type="file" accept=".json" onChange={handleManualLicenseFile} style={{ display: 'none' }} />
               </label>
-              <p style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '5px' }}>If server is unreachable, use a .json from the License Manager.</p>
+              
+              <button className="btn btn-secondary" onClick={() => setShowManual(!showManual)} style={{ width: '100%', fontSize: '0.75rem', marginTop: '10px', border: '1px dashed #64748b' }}>
+                {showManual ? 'Hide Manual Input' : 'Alternative: Paste JSON Text'}
+              </button>
+
+              {showManual && (
+                <div style={{ marginTop: '10px', textAlign: 'left' }}>
+                  <textarea 
+                    value={manualJson}
+                    onChange={(e) => setManualJson(e.target.value)}
+                    placeholder='Paste browser content here...'
+                    style={{ width: '100%', height: '60px', background: '#000', color: '#10b981', border: '1px solid #334155', borderRadius: '5px', fontSize: '0.65rem', padding: '8px', fontFamily: 'monospace' }}
+                  />
+                  <button className="btn btn-primary" onClick={handleManualActivate} style={{ width: '100%', marginTop: '5px', fontSize: '0.8rem' }}>✅ Activate from Text</button>
+                </div>
+              )}
+
+              <p style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '5px' }}>If server is unreachable, use a .json from the License Manager or paste the text.</p>
             </div>
           </div>
 
