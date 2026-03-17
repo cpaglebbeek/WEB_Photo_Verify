@@ -14,7 +14,7 @@ export interface LicenseStatus {
   isGracePeriod?: boolean;
 }
 
-const STORAGE_KEY = 'photovault_license_state';
+const STORAGE_KEY = 'photoverify_license_state';
 
 /**
  * Generates a unique hash tied to hardware (Native) or browser fingerprint (Web).

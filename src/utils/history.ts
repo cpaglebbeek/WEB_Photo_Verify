@@ -7,7 +7,7 @@ export interface HistoryEntry {
   dataUrl?: string; // Optional: only for small deeds or thumbnails
 }
 
-const HISTORY_KEY = 'photovault_history';
+const HISTORY_KEY = 'photoverify_history';
 
 export const addToHistory = (entry: Omit<HistoryEntry, 'id' | 'timestamp'>) => {
   const history: HistoryEntry[] = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');

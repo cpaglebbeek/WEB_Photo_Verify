@@ -474,7 +474,7 @@ function App() {
       <main className="wizard-container">
         {mode === 'ABOUT' && (
           <div className="card-glass text-left">
-            <h2 style={{ color: '#60a5fa' }}>❓ About PhotoVault</h2>
+            <h2 style={{ color: '#60a5fa' }}>❓ About PhotoVerify</h2>
             
             <div style={{ background: 'rgba(0,0,0,0.4)', padding: '15px', borderRadius: '12px', marginBottom: '15px', border: '1px solid #334155' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.85rem' }}>
@@ -530,7 +530,7 @@ function App() {
               </div>
             </div>
 
-            <p>PhotoVault is a "Democratic Forensic Suite" for the individual creator, providing tools that were previously only available to large corporations.</p>
+            <p>PhotoVerify is a "Democratic Forensic Suite" for the individual creator, providing tools that were previously only available to large corporations.</p>
             
             <h3 className="mt-1" style={{ fontSize: '1rem', color: '#fbbf24' }}>1. Comparative Analysis</h3>
             <ul style={{ fontSize: '0.9rem', color: '#cbd5e1', paddingLeft: '20px' }}>
@@ -540,7 +540,7 @@ function App() {
             </ul>
 
             <h3 className="mt-1" style={{ fontSize: '1rem', color: '#fbbf24' }}>2. Sovereignty First</h3>
-            <p style={{ fontSize: '0.9rem' }}>Unlike cloud-based competitors, PhotoVault runs <strong>100% locally</strong> in your browser or on your device. Your sensitive original photos never leave your machine.</p>
+            <p style={{ fontSize: '0.9rem' }}>Unlike cloud-based competitors, PhotoVerify runs <strong>100% locally</strong> in your browser or on your device. Your sensitive original photos never leave your machine.</p>
             
             <button className="btn btn-primary mt-1" onClick={() => setMode('START')}>Got it!</button>
           </div>
@@ -549,7 +549,7 @@ function App() {
         {mode === 'INFO' && (
           <div className="card-glass text-left">
             <h2 style={{ color: '#fbbf24' }}>ℹ️ Scientific Foundation</h2>
-            <p>PhotoVault protects your vision through three distinct cryptographic layers:</p>
+            <p>PhotoVerify protects your vision through three distinct cryptographic layers:</p>
 
             <div style={{ marginTop: '15px' }}>
               <h4 style={{ color: '#60a5fa', margin: '0' }}>🛡️ Layer 1: Invisible Stamp</h4>

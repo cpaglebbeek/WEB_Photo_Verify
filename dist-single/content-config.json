@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "ui": {
-    "title": "PhotoVault",
+    "title": "PhotoVerify",
     "tagline": "Universal Sovereignty: Stamp, Deed, & Forensic DNA",
     "nav": {
       "home": "🏠 Home",
@@ -12,15 +12,15 @@
     },
     "welcome": {
       "title": "Secure Your Vision",
-      "desc": "PhotoVault provides a multi-layered forensic evidence kit to prove image ownership. All processing happens 100% on your device.",
+      "desc": "PhotoVerify provides a multi-layered forensic evidence kit to prove image ownership. All processing happens 100% on your device.",
       "protectBtn": "Protect Photo",
       "verifyBtn": "Verify Photo"
     }
   },
   "about": {
     "title": "Strategic & Competitive Analysis",
-    "summary": "In the age of generative AI and digital reproduction, originality is under siege. PhotoVault shifts the paradigm to Sovereign Forensic Proof—empowering creators with local-first evidence through digital signatures and the Physical Border Stamp.",
-    "comparison": "Unlike Adobe's fragile metadata or Microsoft's reactive filtering, PhotoVault provides proactive, pixel-rooted geometric certainty."
+    "summary": "In the age of generative AI and digital reproduction, originality is under siege. PhotoVerify shifts the paradigm to Sovereign Forensic Proof—empowering creators with local-first evidence through digital signatures and the Physical Border Stamp.",
+    "comparison": "Unlike Adobe's fragile metadata or Microsoft's reactive filtering, PhotoVerify provides proactive, pixel-rooted geometric certainty."
   },
   "help": {
     "title": "Forensic Help Center",
@@ -29,7 +29,7 @@
       {
         "id": 1,
         "title": "Digital Sovereignty",
-        "content": "In the digital age, the 'Chicken & Egg' problem of image ownership is pervasive. PhotoVault solves this through Local Sovereignty across three layers: Digital (Stamp), Forensic (DNA), and Physical (Border Stamp). By generating mathematical and physical proof locally, the creator retains absolute control without relying on third-party cloud trust."
+        "content": "In the digital age, the 'Chicken & Egg' problem of image ownership is pervasive. PhotoVerify solves this through Local Sovereignty across three layers: Digital (Stamp), Forensic (DNA), and Physical (Border Stamp). By generating mathematical and physical proof locally, the creator retains absolute control without relying on third-party cloud trust."
       },
       {
         "id": 2,
@@ -39,7 +39,7 @@
       {
         "id": 3,
         "title": "Visual DNA (aHash)",
-        "content": "Unlike cryptographic hashes, Perceptual Hashes are stable against minor visual changes. PhotoVault uses Average Hash (aHash) logic: it downscales the image to a 16x16 grid, removes color, and generates a 256-bit bitmask. This identifies content, not bytes."
+        "content": "Unlike cryptographic hashes, Perceptual Hashes are stable against minor visual changes. PhotoVerify uses Average Hash (aHash) logic: it downscales the image to a 16x16 grid, removes color, and generates a 256-bit bitmask. This identifies content, not bytes."
       },
       {
         "id": 4,
@@ -49,7 +49,7 @@
       {
         "id": 5,
         "title": "Blue Channel Steganography",
-        "content": "PhotoVault's 'Invisible Stamp' exploits the HVS. Humans have far fewer short-wavelength (Blue) cones than long-wavelength cones. We modulate the Blue channel by ±18 units, which is detectable by sensors but invisible to the naked eye."
+        "content": "PhotoVerify's 'Invisible Stamp' exploits the HVS. Humans have far fewer short-wavelength (Blue) cones than long-wavelength cones. We modulate the Blue channel by ±18 units, which is detectable by sensors but invisible to the naked eye."
       },
       {
         "id": 6,

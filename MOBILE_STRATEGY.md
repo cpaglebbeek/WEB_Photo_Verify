@@ -1,7 +1,7 @@
-# PhotoVault Mobile Strategy (v13.0)
+# PhotoVerify Mobile Strategy (v13.0)
 
 ## Objective
-Transition PhotoVault from a web-first application to a mobile-optimized experience, allowing creators to protect and verify photos directly from their smartphones.
+Transition PhotoVerify from a web-first application to a mobile-optimized experience, allowing creators to protect and verify photos directly from their smartphones.
 
 ## Phase 1: PWA (Progressive Web App) - *Current Goal*
 Turn the web app into a PWA so it can be "installed" on iOS and Android without an app store.
@@ -18,7 +18,7 @@ Turn the web app into a PWA so it can be "installed" on iOS and Android without 
 ## Phase 3: Native Wrapper (Capacitor) - *In Progress*
 Wrap the PWA in [Capacitor](https://capacitorjs.com/) to publish on the Apple App Store and Google Play Store.
 - **Native File System:** Access the device gallery more efficiently. (Completed)
-- **Share Extension:** Allow users to "Share to PhotoVault" from their photo gallery. (Implemented via appRestoredResult and Android Intent)
+- **Share Extension:** Allow users to "Share to PhotoVerify" from their photo gallery. (Implemented via appRestoredResult and Android Intent)
 - **Status Update:** Integrated local-first license synchronization with server retrieval.
 
 ## Technical Requirements

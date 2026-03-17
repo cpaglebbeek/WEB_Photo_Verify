@@ -183,7 +183,7 @@ export default function ZipVerifier({ initialFile, onNativePick, onStart, onProg
     <div className="component-container">
       <h2 style={{ color: '#60a5fa' }}>⚡ One-Click Bundle Audit</h2>
       <p style={{ fontSize: '0.9rem', color: '#94a3b8' }}>
-        Select a PhotoVault evidence package (.zip) to verify all security layers.
+        Select a PhotoVerify evidence package (.zip) to verify all security layers.
       </p>
       
       <div className="input-group" style={{ marginTop: '15px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '10px' }}>

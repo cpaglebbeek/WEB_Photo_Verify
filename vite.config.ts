@@ -15,8 +15,8 @@ export default defineConfig({
       },
       includeAssets: ['appicon.jpg'],
       manifest: {
-        name: 'PhotoVault',
-        short_name: 'PhotoVault',
+        name: 'PhotoVerify',
+        short_name: 'PhotoVerify',
         description: 'Sovereign Image Protection & Forensic DNA',
         theme_color: '#0f172a',
         icons: [
