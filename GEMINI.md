@@ -17,3 +17,15 @@
 - **Routing:** Wijzigingen aan core-logica worden ALTIJD in `Meta_PhotoVerify` gedaan. Wijzigingen aan platform-specifieke bridges worden in het bijbehorende platform-project gedaan.
 - **Syncing:** Na een wijziging moet de AI automatisch de git commit en push verzorgen voor de *gewijzigde* repository.
 - **Explicit Context:** Bij elk antwoord moet de AI expliciet vermelden op welk project de actie betrekking heeft.
+
+## Feature & Bugfix Protocol (Color-Coded)
+- **Nieuwe Feature:**
+  - **Groen:** Minor (Code only, no design/arch impact).
+  - **Oranje:** Design impact (Functional/Technical), but Logical Architecture remains stable.
+  - **Rood:** Major impact (Redesign, Meta-implications, Conceptual/Logical/Physical shift).
+- **Bugfix:**
+  - **Groen:** Snel herstel (Fysiek niveau).
+  - **Geel:** Out-of-physical-box (Logische architectuur van de oplossing).
+  - **Rood:** Out-of-the-box (Conceptueel redesign + Security Audit).
+  - **Loop:** Debug-loop (Probeer een compleet nieuwe invalshoek).
+- **Root Cause Analysis (Mandatory):** Bij elke bugfix duid ik de oorzaak op drie niveaus: **Functioneel**, **Technisch**, en **Architectonisch abstractieniveau**.
