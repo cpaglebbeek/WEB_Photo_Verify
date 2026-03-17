@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { App as CapApp } from '@capacitor/app';
 import { Filesystem } from '@capacitor/filesystem';
 import { Capacitor, registerPlugin } from '@capacitor/core';
-import { Device } from '@capacitor/device';
+import { getMachineDetails } from './utils/machineId';
 import CopyrightVerifier from './components/CopyrightVerifier';
 import TimeAnchorVerifier from './components/TimeAnchorVerifier';
 import LegacyBorderVerifier from './components/LegacyBorderVerifier';
@@ -72,11 +72,11 @@ function App() {
   const [deviceInfo, setDeviceInfo] = useState<{ name?: string; model?: string }>({});
   const [sharedImage, setSharedImage] = useState<HTMLImageElement | null>(null);
   const [sharedFilename, setSharedFilename] = useState<string>('photo.png');
-  const [sharedUid, setSharedUid] = useState<string>(localStorage.getItem('default_stamp_code') || generateUniqueStamp());
-...
+  const [sharedUid, setSharedUid] = useState<string>(generateUniqueStamp());
+
   // Refresh stamp code when entering Shield mode to ensure uniqueness
   useEffect(() => {
-    if (mode === 'SHIELD_AUTO' && !localStorage.getItem('default_stamp_code')) {
+    if (mode === 'SHIELD_AUTO') {
       setSharedUid(generateUniqueStamp());
     }
   }, [mode]);
@@ -123,8 +123,8 @@ function App() {
     setIsSyncing(true);
     
     try {
-      const info = await Device.getInfo();
-      setDeviceInfo({ name: info.name, model: info.model });
+      const info = getMachineDetails();
+      setDeviceInfo({ name: info.os, model: info.browser });
       
       const hash = await getDeviceHash();
       addLog(`[App] ID: ${hash} | Server: ${licenseServer}`);

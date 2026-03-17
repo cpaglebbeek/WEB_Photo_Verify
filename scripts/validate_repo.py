@@ -3,7 +3,7 @@ import os
 import sys
 
 def validate_repo():
-    repo_path = 'META_PHOTOVERIFY_REPO.json'
+    repo_path = 'WEB_PHOTOVERIFY_REPO.json'
     if not os.path.exists(repo_path):
         print(f"Error: {repo_path} not found.")
         sys.exit(1)
@@ -11,7 +11,7 @@ def validate_repo():
     with open(repo_path, 'r') as f:
         repo = json.load(f)
         
-    print(f"--- Meta_PhotoVerify Build Validation (v{repo['project']['version']}) ---")
+    print(f"--- WEB_PhotoVerify Build Validation (v{repo['project']['version']}) ---")
     
     # Files to verify based on technical mappings
     files_to_check = [
@@ -23,8 +23,7 @@ def validate_repo():
         "src/utils/perceptualHash.ts",
         "src/components/LegacyBorderVerifier.tsx",
         "src/utils/timeAnchor.ts",
-        "android/app/src/main/java/nl/fotolerant/photovault/MainActivity.java",
-        "android/app/src/main/java/nl/fotolerant/photovault/NativeBridgePlugin.java"
+        "src/utils/machineId.ts"
     ]
     
     missing_files = []

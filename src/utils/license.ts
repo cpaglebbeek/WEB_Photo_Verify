@@ -1,6 +1,4 @@
-import { Device } from '@capacitor/device';
-import { CapacitorHttp, type HttpResponse } from '@capacitor/core';
-import { sha256 } from './timeAnchor';
+import { generateMachineHash } from './machineId';
 
 export interface LicenseStatus {
   active: boolean;
@@ -21,16 +19,7 @@ const STORAGE_KEY = 'photoverify_license_state';
  */
 export const getDeviceHash = async (): Promise<string> => {
   try {
-    const info = await Device.getId();
-    const infoObj = await Device.getInfo();
-    const identifier = info.identifier || 'UNKNOWN_ID';
-    const model = infoObj.model || 'UNKNOWN_MODEL';
-    
-    // Use string seed for sha256 to avoid type mismatch
-    const seed = `${identifier}_${model}_PV_SALT_2026`;
-    const hash = await sha256(seed);
-    const shortHash = hash.toUpperCase().substring(0, 16);
-    console.log(`[License] Device Hash: ${shortHash} (from ${seed})`);
+    const shortHash = await generateMachineHash();
     return shortHash;
   } catch (err) {
     console.error(`[License] Device Identification failed:`, err);
@@ -59,21 +48,20 @@ export const checkLicense = async (hash: string, serverUrl: string, forceSync = 
 
   // 2. Sync Path: Try to retrieve from server
   const fetchUrl = `${sanitizedServerUrl}/licenses/${hash}.json`;
-  console.log(`[License] Fetching via CapacitorHttp: ${fetchUrl}`);
+  console.log(`[License] Fetching via standard fetch: ${fetchUrl}`);
   
   try {
-    const res: HttpResponse = await CapacitorHttp.get({
-      url: fetchUrl,
+    const res = await fetch(fetchUrl, {
       headers: { 'Accept': 'application/json' }
     });
     
-    if (res.status !== 200) {
+    if (!res.ok) {
       console.warn(`[License] Server returned ${res.status}`);
       if (res.status === 404) throw new Error(`ID ${hash} not registered on server`);
       throw new Error(`Server error: ${res.status}`);
     }
     
-    const serverData = res.data;
+    const serverData = await res.json();
     console.log(`[License] Success:`, serverData);
     
     const newState: LicenseStatus = {
@@ -92,7 +80,7 @@ export const checkLicense = async (hash: string, serverUrl: string, forceSync = 
     return newState;
   } catch (err: unknown) {
     const error = err as Error;
-    console.error(`[License] CapacitorHttp failed:`, error);
+    console.error(`[License] Fetch failed:`, error);
     
     // 3. Fallback Path: If server fails, check if we can stay in offline grace period
     if (localState && localState.deviceHash === hash) {

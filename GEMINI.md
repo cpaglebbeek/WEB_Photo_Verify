@@ -31,3 +31,6 @@
   - **Rood:** Out-of-the-box (Conceptueel redesign + Security Audit).
   - **Loop:** Debug-loop (Probeer een compleet nieuwe invalshoek).
 - **Root Cause Analysis (Mandatory):** Bij elke bugfix duid ik de oorzaak op drie niveaus: **Functioneel**, **Technisch**, en **Architectonisch abstractieniveau**.
+
+## Build Delivery Mandate
+- **APK Delivery:** Na elke succesvolle Android build MOET de resulterende APK gekopieerd worden naar `/Users/christian/Downloads`.
