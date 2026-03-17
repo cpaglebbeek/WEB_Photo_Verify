@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "validate": "python3 scripts/validate_repo.py",
-    "build": "npm run validate && tsc -b && vite build",
+    "build": "bash scripts/sync_meta.sh && npm run validate && tsc -b && vite build",
     "mobile:sync": "npm run build && npx cap sync android",
     "mobile:run": "npm run mobile:sync && npx cap run android",
     "mobile:assets": "capacitor-assets generate --android",
