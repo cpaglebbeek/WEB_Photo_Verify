@@ -12,7 +12,7 @@ import { injectVirtualDataAsync } from './utils/virtualStorage';
 import { sha256, generateCombinedProof } from './utils/timeAnchor';
 import { generatePerceptualHashDetailed } from './utils/perceptualHash';
 import { bundleEvidence } from './utils/zipper';
-import { getDeviceHash, checkLicense, type LicenseStatus } from './utils/license';
+import { getDeviceHash, checkLicense, applyManualLicense, testConnection, type LicenseStatus } from './utils/license';
 import versionData from './version.json';
 import './App.css';
 
@@ -127,9 +127,18 @@ function App() {
       setDeviceInfo({ name: info.os, model: info.browser });
       
       const hash = await getDeviceHash();
-      addLog(`[App] ID: ${hash} | Server: ${licenseServer}`);
+      addLog(`[App] Machine Hash: ${hash}`);
+
+      const lic = await checkLicense(hash, licenseServer, forceSync, (msg) => addLog(msg));
       
-      const lic = await checkLicense(hash, licenseServer, forceSync);
+      // AUTO-DEBUG (Green): If SSL/HTTPS fails and we are using https://fotolerant.nl, try a fallback or clearer error
+      if (!lic.active && lic.message?.toLowerCase().includes('network error')) {
+        addLog(`[App] Connection failed. Running diagnostics...`);
+        const diag = await testConnection(licenseServer);
+        addLog(`[App] DIAG: ${diag.status === 403 ? '403 Forbidden (OK: Server REACHED)' : 'Status ' + diag.status}`);
+        addLog(`[App] DIAG_MSG: ${diag.message}`);
+      }
+
       addLog(`[App] Result: ${lic.active ? 'ACTIVE' : 'INACTIVE'} - ${lic.message}`);
       setLicense(lic);
       setIsSyncing(false);
@@ -178,6 +187,27 @@ function App() {
   const manualSync = () => {
     setDebugLogs([]);
     startup(true);
+  };
+
+  const handleManualLicenseFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !license?.deviceHash) return;
+    
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const newLic = applyManualLicense(data, license.deviceHash);
+      setLicense(newLic);
+      addLog(`[App] Manual License Applied: ${newLic.active ? 'ACTIVE' : 'INACTIVE'}`);
+      if (newLic.active) {
+        setMode('START');
+        alert("License successfully activated from file!");
+      } else {
+        alert("License file loaded but is not active or expired.");
+      }
+    } catch (e) {
+      alert("Error reading license file. Ensure it is a valid .json from the License Manager.");
+    }
   };
 
   useEffect(() => {
@@ -438,6 +468,13 @@ function App() {
             <button className="btn btn-nav btn-success" onClick={manualSync} disabled={isSyncing} style={{ width: '100%', padding: '12px' }}>
               {isSyncing ? '⌛ Syncing...' : '🔄 Sync with Server'}
             </button>
+            <div style={{ marginTop: '10px', borderTop: '1px solid #334155', paddingTop: '10px' }}>
+              <label className="btn btn-secondary" style={{ width: '100%', display: 'block', padding: '10px', fontSize: '0.85rem', cursor: 'pointer', background: '#475569' }}>
+                📂 RESCUE: UPLOAD LICENSE FILE
+                <input type="file" accept=".json" onChange={handleManualLicenseFile} style={{ display: 'none' }} />
+              </label>
+              <p style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '5px' }}>If server is unreachable, use a .json from the License Manager.</p>
+            </div>
           </div>
 
           {license?.message && <p style={{ marginTop: '15px', color: license.active ? '#2ecc71' : '#ef4444', fontSize: '0.9rem' }}>{license.message}</p>}
