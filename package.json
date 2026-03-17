@@ -18,6 +18,8 @@
     "@capacitor/device": "^8.0.1",
     "@capacitor/filesystem": "^8.1.2",
     "@capacitor/share": "^8.0.1",
+    "@types/exif-js": "^2.3.1",
+    "exif-js": "^2.3.0",
     "jszip": "^3.10.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { App as CapApp } from '@capacitor/app';
 import { Filesystem } from '@capacitor/filesystem';
 import { Capacitor, registerPlugin } from '@capacitor/core';
-import { getMachineDetails } from './utils/machineId';
+import { getMachineDetails, getExtendedDeviceInfo } from './utils/machineId';
 import CopyrightVerifier from './components/CopyrightVerifier';
 import TimeAnchorVerifier from './components/TimeAnchorVerifier';
 import LegacyBorderVerifier from './components/LegacyBorderVerifier';
@@ -13,6 +13,8 @@ import { sha256, generateCombinedProof } from './utils/timeAnchor';
 import { generatePerceptualHashDetailed } from './utils/perceptualHash';
 import { bundleEvidence } from './utils/zipper';
 import { getDeviceHash, checkLicense, applyManualLicense, testConnection, type LicenseStatus } from './utils/license';
+import { getRuntimeFeatures } from './utils/runtime';
+import { extractMetadata, type ImageMetadata, formatExifSummary } from './utils/metadata';
 import versionData from './version.json';
 import './App.css';
 
@@ -61,6 +63,7 @@ interface AppRestoredResult {
 }
 
 function App() {
+  const features = getRuntimeFeatures();
   const generateUniqueStamp = () => {
     const timePart = Date.now() & 0xFFFFFF;
     const randomPart = Math.floor(Math.random() * 0xFFFFFF);
@@ -72,6 +75,8 @@ function App() {
   const [deviceInfo, setDeviceInfo] = useState<{ name?: string; model?: string }>({});
   const [sharedImage, setSharedImage] = useState<HTMLImageElement | null>(null);
   const [sharedFilename, setSharedFilename] = useState<string>('photo.png');
+  const [imageMeta, setImageMeta] = useState<ImageMetadata | null>(null);
+  const [author, setAuthor] = useState<string>(localStorage.getItem('default_author') || '');
   const [sharedUid, setSharedUid] = useState<string>(generateUniqueStamp());
 
   // Refresh stamp code when entering Shield mode to ensure uniqueness
@@ -474,9 +479,14 @@ function App() {
             </span>
           </div>
           
-          <div style={{ background: '#000', padding: '15px', borderRadius: '10px', margin: '20px 0', border: '1px solid #334155' }}>
-            <small style={{ color: 'var(--text-dim)', display: 'block', marginBottom: '5px' }}>YOUR DEVICE ID</small>
-            <code style={{ fontSize: '1.2rem', color: '#60a5fa', letterSpacing: '2px' }}>{license?.deviceHash || '...'}</code>
+          <div style={{ background: '#000', padding: '15px', borderRadius: '10px', margin: '20px 0', border: '1px solid #334155', textAlign: 'left' }}>
+            <small style={{ color: 'var(--text-dim)', display: 'block', marginBottom: '5px' }}>FORENSIC DEVICE IDENTITY</small>
+            <code style={{ fontSize: '1.1rem', color: '#60a5fa', letterSpacing: '1px', display: 'block', marginBottom: '10px' }}>{license?.deviceHash || '...'}</code>
+            <div style={{ fontSize: '0.7rem', color: '#94a3b8', borderTop: '1px solid #1e293b', paddingTop: '10px', lineHeight: '1.4' }}>
+              <strong>OS:</strong> {features.os}<br/>
+              <strong>Browser:</strong> {features.browser}<br/>
+              <strong>Mode:</strong> {features.platformDetail}
+            </div>
           </div>
 
           <div style={{ background: '#020617', padding: '10px', borderRadius: '8px', marginBottom: '20px', textAlign: 'left', border: '1px solid #1e293b' }}>
@@ -489,7 +499,13 @@ function App() {
           </div>
 
           <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
-            <button className="btn btn-primary" onClick={() => { license?.deviceHash && navigator.clipboard.writeText(license.deviceHash); alert("Device ID copied to clipboard!"); }} style={{ width: '100%' }}>📋 Copy ID</button>
+            <button className="btn btn-primary" onClick={() => { 
+              if (license?.deviceHash) {
+                const extended = getExtendedDeviceInfo(license.deviceHash);
+                navigator.clipboard.writeText(extended); 
+                alert("Extended Device ID & Platform Info copied to clipboard!"); 
+              }
+            }} style={{ width: '100%' }}>📋 Copy Extended ID</button>
             <button className="btn btn-nav btn-success" onClick={manualSync} disabled={isSyncing} style={{ width: '100%', padding: '12px' }}>
               {isSyncing ? '⌛ Syncing...' : '🔄 Sync with Server'}
             </button>
@@ -534,7 +550,7 @@ function App() {
       <header className="App-header">
         <div className="header-top">
           <div className="app-branding" onClick={() => setMode('START')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '15px' }}>
-            {uiConfig?.branding?.logoUrl ? <img src={uiConfig.branding.logoUrl} alt="Logo" style={{ height: '50px' }} /> : <span style={{ fontSize: '2.5rem' }}>📸</span>}
+            <img src="appicon.jpg" alt="Logo" style={{ height: '50px', borderRadius: '8px' }} />
             <div style={{ textAlign: 'left' }}>
               <h1 style={{ fontSize: '1.8rem', lineHeight: '1' }}>{content.ui.title} <span style={{ color: '#10b981', fontSize: '0.8rem' }}>[STABLE_V1.2.7]</span></h1>
               <small style={{ color: '#10b981', fontWeight: 'bold' }}>v{versionData.current}</small>
@@ -562,13 +578,24 @@ function App() {
                   <strong style={{ color: '#10b981' }}>v{versionData.current}</strong>
                 </div>
                 <div>
-                  <label style={{ color: '#94a3b8', display: 'block', fontSize: '0.7rem' }}>CODENAME</label>
-                  <strong style={{ color: '#fbbf24' }}>Peter_Final</strong>
+                  <label style={{ color: '#94a3b8', display: 'block', fontSize: '0.7rem' }}>PLATFORM</label>
+                  <strong style={{ color: '#60a5fa' }}>{features.platformDetail}</strong>
+                </div>
+              </div>
+              <hr style={{ border: '0', borderTop: '1px solid #1e293b', margin: '10px 0' }} />
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.8rem', color: '#cbd5e1' }}>
+                <div>
+                  <label style={{ color: '#94a3b8', display: 'block', fontSize: '0.65rem' }}>OS / DEVICE</label>
+                  {features.os} ({features.deviceType})
+                </div>
+                <div>
+                  <label style={{ color: '#94a3b8', display: 'block', fontSize: '0.65rem' }}>BROWSER ENGINE</label>
+                  {features.browser}
                 </div>
               </div>
 
               <hr style={{ border: '0', borderTop: '1px solid #1e293b', margin: '10px 0' }} />
-
               <label style={{ color: '#94a3b8', display: 'block', fontSize: '0.7rem' }}>DEVICE OWNER / NAME</label>
               <strong style={{ color: '#fff', fontSize: '0.9rem' }}>{deviceInfo.name || 'Unknown Device'}</strong>
               <small style={{ display: 'block', color: '#94a3b8', fontSize: '0.7rem' }}>Model: {deviceInfo.model}</small>
@@ -658,7 +685,9 @@ function App() {
           <div className="card-glass">
             <h2>⚙️ Configuration & Sync</h2>
             <div className="info-box mb-1" style={{ fontSize: '0.8rem', background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '8px' }}>
-              <p style={{ margin: 0 }}>Current Active Folder: <code style={{ color: '#60a5fa' }}>{safFolderUri || 'Internal Documents (Default)'}</code></p>
+              <p style={{ margin: '0 0 5px 0' }}><strong>Runtime:</strong> <span style={{ color: '#60a5fa' }}>{features.mode}</span></p>
+              <p style={{ margin: 0 }}><strong>Active Folder:</strong> <code style={{ color: '#60a5fa' }}>{safFolderUri || 'Internal Documents (Default)'}</code></p>
+              {features.isSandboxed && <p style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '5px' }}>ℹ️ {features.storageRecommendation}</p>}
             </div>
 
             <div style={{ display: 'grid', gap: '15px' }}>
@@ -687,11 +716,17 @@ function App() {
                 💾 SAVE / COMMIT
               </button>
             </div>
-            
+
             <div style={{ marginTop: '20px', borderTop: '1px solid #334155', paddingTop: '15px' }}>
-              <button className="btn btn-primary" onClick={() => NativeBridge.openFolderPicker()} style={{ width: '100%', marginBottom: '10px', background: '#2563eb' }}>
-                📁 CHANGE STORAGE FOLDER
-              </button>
+              {features.canSelectFolder ? (
+                <button className="btn btn-primary" onClick={() => NativeBridge.openFolderPicker()} style={{ width: '100%', marginBottom: '10px', background: '#2563eb' }}>
+                  📁 CHANGE STORAGE FOLDER
+                </button>
+              ) : (
+                <div style={{ padding: '10px', background: '#000', border: '1px solid #334155', borderRadius: '8px', fontSize: '0.8rem', color: '#94a3b8', textAlign: 'center' }}>
+                  📂 Browser restriction: Folder selection managed by OS.
+                </div>
+              )}
               <button className="btn btn-secondary" onClick={() => {
                 localStorage.removeItem('saf_folder_uri');
                 alert("Storage folder reset to Internal Documents.");
@@ -700,7 +735,6 @@ function App() {
             </div>
           </div>
         )}
-
         {mode === 'SHIELD_AUTO' && (
           <div className="card-glass text-center">
             <h2>🛡️ One-Click Shield</h2>
@@ -733,12 +767,44 @@ function App() {
             )}
 
             <label className="file-dropzone mt-1">
-              <input type="file" accept="image/*" onChange={(e) => {
+              <input type="file" accept="image/*" onChange={async (e) => {
                 const file = e.target.files?.[0];
-                if (file) { setSharedFilename(file.name); const img = new Image(); img.onload = () => setSharedImage(img); img.src = URL.createObjectURL(file); }
+                if (file) { 
+                  setSharedFilename(file.name); 
+                  const img = new Image(); 
+                  img.onload = async () => {
+                    setSharedImage(img);
+                    const meta = await extractMetadata(file, img);
+                    setImageMeta(meta);
+                  };
+                  img.src = URL.createObjectURL(file); 
+                }
               }} />
-              {sharedImage ? <img src={sharedImage.src} style={{ maxWidth: '100%', maxHeight: '200px' }} /> : <span>Click to load photo</span>}
+              {sharedImage ? (
+                <div style={{ position: 'relative', width: '100%' }}>
+                  <img src={sharedImage.src} style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px' }} />
+                  {imageMeta && (
+                    <div style={{ marginTop: '10px', background: 'rgba(0,0,0,0.6)', padding: '10px', borderRadius: '8px', fontSize: '0.7rem', textAlign: 'left', color: '#fff', border: '1px solid #334155' }}>
+                      <strong>📄 FILE:</strong> {imageMeta.filename} ({Math.round(imageMeta.size/1024)} KB)<br/>
+                      <strong>📏 IMAGE:</strong> {imageMeta.width}x{imageMeta.height} | {imageMeta.dpi} | {imageMeta.colorDepth}<br/>
+                      <strong>📸 EXIF:</strong> {formatExifSummary(imageMeta.exif)}
+                    </div>
+                  )}
+                </div>
+              ) : <span>Click to load photo</span>}
             </label>
+
+            <div style={{ margin: '15px 0', textAlign: 'left' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.8rem', color: '#94a3b8', fontWeight: 'bold' }}>AUTHOR / OWNER NAME</label>
+              <input 
+                type="text" 
+                value={author} 
+                onChange={e => { setAuthor(e.target.value); localStorage.setItem('default_author', e.target.value); }} 
+                placeholder="Enter your name..."
+                style={{ width: '100%', background: '#000', color: '#fff', padding: '12px', border: '1px solid #334155', borderRadius: '8px', fontSize: '1rem' }}
+              />
+            </div>
+
             {sharedImage && <button className="btn btn-primary mt-1" onClick={runOneClickShield} style={{ width: '100%', padding: '15px', fontSize: '1.1rem' }}>⚡ ACTIVATE SHIELD (ZIP)</button>}
           </div>
         )}
