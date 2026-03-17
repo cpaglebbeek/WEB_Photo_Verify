@@ -1,0 +1,26 @@
+{
+  "ui": {
+    "title": "Meta_PhotoVerify",
+    "dashboard": {
+      "protectTitle": "Auto-Shield",
+      "protectDesc": "ZIP Evidence Bundle",
+      "verifyTitle": "Manual Audit",
+      "verifyDesc": "Step-by-step verification"
+    },
+    "shield": {
+      "title": "🛡️ One-Click Shield",
+      "button": "⚡ ACTIVATE SHIELD (ZIP)",
+      "options": ["Physical Border", "Invisible Stamp"]
+    },
+    "audit": {
+      "title": "⚡ One-Click Bundle Audit",
+      "uploadBtn": "📂 BROWSE PHOTOVERIFY FOLDER",
+      "successMsg": "✅ MATCH / FOUND",
+      "failMsg": "❌ MISMATCH",
+      "missingMsg": "⚪ NOT PRESENT"
+    },
+    "about": {
+      "philosophy": "Democratic Forensic Suite for individual creators. Sovereignty first: 100% local processing, no cloud dependency."
+    }
+  }
+}

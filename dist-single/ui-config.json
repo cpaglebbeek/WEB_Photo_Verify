@@ -1,0 +1,79 @@
+{
+  "version": "1.0",
+  "metadata": {
+    "app": "PhotoVault",
+    "updated": "2026-03-15T16:00:00Z"
+  },
+  "branding": {
+    "logoUrl": "photoverify-logo.svg",
+    "iconUrl": "photoverify-logo.svg"
+  },
+  "themes": {
+    "dark": {
+      "bg": "#0f172a",
+      "cardBg": "#1e293b",
+      "text": "#f8fafc",
+      "textDim": "#94a3b8",
+      "border": "#334155",
+      "accent": "#60a5fa",
+      "success": "#10b981",
+      "warning": "#fbbf24"
+    },
+    "light": {
+      "bg": "#f8fafc",
+      "cardBg": "#ffffff",
+      "text": "#0f172a",
+      "textDim": "#64748b",
+      "border": "#e2e8f0",
+      "accent": "#2563eb",
+      "success": "#059669",
+      "warning": "#d97706"
+    }
+  },
+  "platforms": {
+    "Desktop": {
+      "Windows": {
+        "borderRadius": "8px",
+        "buttonPadding": "12px 24px",
+        "fontSizeBase": "16px",
+        "headerSize": "2.5rem"
+      },
+      "MacOS": {
+        "borderRadius": "12px",
+        "buttonPadding": "10px 20px",
+        "fontSizeBase": "15px",
+        "headerSize": "2.2rem"
+      }
+    },
+    "Tablet": {
+      "Android": {
+        "borderRadius": "16px",
+        "buttonPadding": "14px 28px",
+        "fontSizeBase": "18px",
+        "headerSize": "2.8rem"
+      },
+      "IOS": {
+        "borderRadius": "20px",
+        "buttonPadding": "12px 24px",
+        "fontSizeBase": "17px",
+        "headerSize": "2.4rem"
+      }
+    },
+    "Mobile": {
+      "Android": {
+        "borderRadius": "12px",
+        "buttonPadding": "12px 20px",
+        "fontSizeBase": "16px",
+        "headerSize": "2.0rem",
+        "stackLayout": true
+      },
+      "IOS": {
+        "borderRadius": "15px",
+        "buttonPadding": "14px 22px",
+        "fontSizeBase": "16px",
+        "headerSize": "2.1rem",
+        "stackLayout": true
+      }
+    }
+  }
+}

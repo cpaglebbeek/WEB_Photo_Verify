@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhotoVault Sovereign Studio Pro</title>
+    <style>
+        :root { --p-bg: #0f172a; --p-text: #f8fafc; --accent: #60a5fa; }
+        body { font-family: 'Inter', system-ui; background: var(--p-bg); color: var(--p-text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Layout */
+        #sidebar { width: 500px; background: #1e293b; border-right: 1px solid #334155; display: flex; flex-direction: column; }
+        #preview { flex: 1; padding: 40px; display: flex; flex-direction: column; align-items: center; gap: 20px; overflow-y: auto; background: #000; position: relative; }
+        
+        /* Header & Tabs */
+        .sidebar-header { padding: 20px; border-bottom: 1px solid #334155; }
+        .tabs { display: flex; background: #0f172a; padding: 5px; margin: 10px 20px; border-radius: 8px; }
+        .tab-btn { flex: 1; background: transparent; color: #94a3b8; border: none; padding: 8px; cursor: pointer; border-radius: 6px; font-weight: 600; font-size: 0.8rem; }
+        .tab-btn.active { background: var(--accent); color: white; }
+        
+        /* Editor Area */
+        .editor-container { flex: 1; overflow-y: auto; padding: 20px; }
+        .control-group { margin-bottom: 20px; background: rgba(15, 23, 42, 0.5); padding: 15px; border-radius: 12px; border: 1px solid #334155; }
+        .nested-group { margin-left: 15px; border-left: 2px solid #334155; padding-left: 15px; margin-top: 10px; }
+        
+        h3 { margin-top: 0; font-size: 0.8rem; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+        .field-row { margin-bottom: 12px; }
+        label { display: block; font-size: 0.7rem; color: #94a3b8; margin-bottom: 4px; font-weight: bold; }
+        
+        input[type="text"], input[type="number"], textarea, select { 
+            width: 100%; background: #0f172a; border: 1px solid #334155; color: white; padding: 8px 12px; border-radius: 6px; box-sizing: border-box; font-size: 0.85rem;
+        }
+        textarea { height: 60px; resize: vertical; }
+        input[type="color"] { width: 40px; height: 40px; border: none; background: transparent; cursor: pointer; }
+        .color-picker-wrap { display: flex; align-items: center; gap: 10px; }
+
+        /* Preview Mock */
+        .mock-device { border: 12px solid #334155; border-radius: 40px; background: #0f172a; overflow: hidden; box-shadow: 0 50px 100px -20px rgba(0,0,0,0.8); transition: all 0.3s ease; }
+        .mock-screen { padding: 0; color: white; height: 100%; overflow-y: auto; display: flex; flex-direction: column; }
+        .mock-header { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .mock-content { padding: 20px; flex: 1; }
+        
+        /* Toolbar */
+        .toolbar { padding: 20px; border-top: 1px solid #334155; display: flex; gap: 10px; background: #1e293b; }
+        .btn-save { flex: 1; background: #10b981; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn-secondary { background: #475569; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; }
+
+        /* Array handling */
+        .array-item { position: relative; padding-top: 25px; border-top: 1px dashed #334155; margin-top: 15px; }
+        .array-badge { position: absolute; top: 0; left: 0; background: #334155; font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; }
+
+        #json-editor { width: 100%; height: 100%; font-family: monospace; background: #000; color: #10b981; border: none; padding: 20px; box-sizing: border-box; resize: none; }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <h2 style="margin:0; font-size: 1.2rem;">🛠️ Sovereign Studio <span style="font-size: 0.7rem; opacity: 0.5; font-weight: normal;">PRO</span></h2>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab-btn active" id="tab-ui" onclick="setTab('ui')">Visual Stijl</button>
+            <button class="tab-btn" id="tab-content" onclick="setTab('content')">Inhoud</button>
+            <button class="tab-btn" id="tab-raw" onclick="setTab('raw')">Raw JSON</button>
+        </div>
+
+        <div style="padding: 0 20px 10px 20px; border-bottom: 1px solid #334155;">
+            <label style="color: var(--accent); font-size: 0.6rem; letter-spacing: 1px;">IMPORT CONFIGS</label>
+            <div style="display: flex; gap: 5px; margin-top: 5px;">
+                <input type="file" id="import-ui" accept=".json" style="display:none" onchange="importFile(this, 'ui')">
+                <button class="btn-secondary" style="font-size: 0.7rem; padding: 5px 10px;" onclick="document.getElementById('import-ui').click()">📂 UI JSON</button>
+                
+                <input type="file" id="import-content" accept=".json" style="display:none" onchange="importFile(this, 'content')">
+                <button class="btn-secondary" style="font-size: 0.7rem; padding: 5px 10px;" onclick="document.getElementById('import-content').click()">📂 Content JSON</button>
+            </div>
+        </div>
+
+        <div id="editor-ui" class="editor-container"></div>
+        <div id="editor-content" class="editor-container" style="display:none;"></div>
+        <div id="editor-raw" class="editor-container" style="display:none; padding:0;">
+            <textarea id="json-editor"></textarea>
+        </div>
+
+        <div class="toolbar">
+            <button class="btn-secondary" onclick="resetConfig()">Reset</button>
+            <button class="btn-save" onclick="exportConfigs()">Export (JSON Bundle)</button>
+        </div>
+    </div>
+
+    <div id="preview">
+        <div style="color: #94a3b8; font-size: 0.8rem; margin-bottom: 10px;">LIVE PREVIEW (MOBILE VIEW)</div>
+        <div class="mock-device" id="device-shell" style="width: 375px; height: 750px;">
+            <div class="mock-screen" id="app-preview">
+                <div class="mock-header" id="pre-header">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <img id="pre-logo" src="photoverify-logo.svg" style="width: 30px; height: 30px;">
+                        <h1 id="pre-title" style="font-size: 1.2rem; margin: 0;">PhotoVault</h1>
+                    </div>
+                    <p id="pre-tagline" style="font-size: 0.7rem; opacity: 0.6; margin: 5px 0 0 0;"></p>
+                </div>
+                <div class="mock-content" id="pre-body">
+                    <div id="pre-welcome-card" style="padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+                        <h3 id="pre-welcome-title" style="color: var(--accent);">Secure Your Vision</h3>
+                        <p id="pre-welcome-desc" style="font-size: 0.8rem; line-height: 1.4; opacity: 0.8;"></p>
+                        <button id="pre-btn" style="width: 100%; padding: 12px; border: none; background: var(--accent); color: white; font-weight: bold; margin-top: 10px;">Protect Photo</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let configs = {
+            ui: {},
+            content: {}
+        };
+        let currentTab = 'ui';
+
+        async function init() {
+            try {
+                const [uRes, cRes] = await Promise.all([fetch('ui-config.json'), fetch('content-config.json')]);
+                configs.ui = await uRes.json();
+                configs.content = await cRes.json();
+                
+                refreshEditors();
+                updatePreview();
+            } catch (e) {
+                console.error("Failed to load configs", e);
+                alert("Error loading local JSON files. Make sure they exist in the root.");
+            }
+        }
+
+        function importFile(input, type) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    configs[type] = data;
+                    refreshEditors();
+                    updatePreview();
+                    alert(`${type.toUpperCase()} Config geïmporteerd!`);
+                } catch (err) {
+                    alert("Ongeldig JSON bestand!");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function refreshEditors() {
+            renderEditor('ui', configs.ui, document.getElementById('editor-ui'));
+            renderEditor('content', configs.content, document.getElementById('editor-content'));
+        }
+
+        function setTab(tab) {
+            currentTab = tab;
+            document.getElementById('editor-ui').style.display = tab === 'ui' ? 'block' : 'none';
+            document.getElementById('editor-content').style.display = tab === 'content' ? 'block' : 'none';
+            document.getElementById('editor-raw').style.display = tab === 'raw' ? 'block' : 'none';
+            
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.id === `tab-${tab}`);
+            });
+
+            if (tab === 'raw') {
+                document.getElementById('json-editor').value = JSON.stringify(configs, null, 2);
+            }
+        }
+
+        function renderEditor(type, obj, container, path = []) {
+            if (path.length === 0) container.innerHTML = '';
+
+            for (const key in obj) {
+                const value = obj[key];
+                const currentPath = [...path, key];
+                const fieldId = `${type}-${currentPath.join('-')}`;
+                
+                if (Array.isArray(value)) {
+                    const group = createGroup(key, container);
+                    value.forEach((item, index) => {
+                        const itemWrap = document.createElement('div');
+                        itemWrap.className = 'array-item';
+                        itemWrap.innerHTML = `<span class="array-badge">Item #${index + 1}</span>`;
+                        group.appendChild(itemWrap);
+                        renderEditor(type, item, itemWrap, [...currentPath, index]);
+                    });
+                } else if (typeof value === 'object' && value !== null) {
+                    const group = createGroup(key, container);
+                    renderEditor(type, value, group, currentPath);
+                } else {
+                    const row = document.createElement('div');
+                    row.className = 'field-row';
+                    
+                    const label = document.createElement('label');
+                    label.innerText = key.replace(/([A-Z])/g, ' $1').toUpperCase();
+                    row.appendChild(label);
+
+                    let input;
+                    if (typeof value === 'string' && value.startsWith('#') && value.length <= 7) {
+                        // Color input
+                        const wrap = document.createElement('div');
+                        wrap.className = 'color-picker-wrap';
+                        input = document.createElement('input');
+                        input.type = 'color';
+                        input.value = value;
+                        const text = document.createElement('input');
+                        text.type = 'text';
+                        text.value = value;
+                        text.style.width = '100px';
+                        
+                        input.onchange = (e) => { 
+                            text.value = e.target.value; 
+                            updateValue(type, currentPath, e.target.value); 
+                        };
+                        text.oninput = (e) => { 
+                            if(/^#[0-9A-F]{6}$/i.test(e.target.value)) {
+                                input.value = e.target.value;
+                                updateValue(type, currentPath, e.target.value);
+                            }
+                        };
+                        wrap.appendChild(input);
+                        wrap.appendChild(text);
+                        row.appendChild(wrap);
+                    } else if (typeof value === 'string' && value.length > 50) {
+                        // Textarea
+                        input = document.createElement('textarea');
+                        input.value = value;
+                        input.oninput = (e) => updateValue(type, currentPath, e.target.value);
+                        row.appendChild(input);
+                    } else if (typeof value === 'number') {
+                        input = document.createElement('input');
+                        input.type = 'number';
+                        input.value = value;
+                        input.oninput = (e) => updateValue(type, currentPath, parseFloat(e.target.value));
+                        row.appendChild(input);
+                    } else if (typeof value === 'boolean') {
+                        input = document.createElement('select');
+                        input.innerHTML = '<option value="true">TRUE</option><option value="false">FALSE</option>';
+                        input.value = value.toString();
+                        input.onchange = (e) => updateValue(type, currentPath, e.target.value === 'true');
+                        row.appendChild(input);
+                    } else {
+                        // Default text
+                        input = document.createElement('input');
+                        input.type = 'text';
+                        input.value = value;
+                        input.oninput = (e) => updateValue(type, currentPath, e.target.value);
+                        row.appendChild(input);
+                    }
+                    container.appendChild(row);
+                }
+            }
+        }
+
+        function createGroup(title, parent) {
+            const wrap = document.createElement('div');
+            wrap.className = 'control-group';
+            const h = document.createElement('h3');
+            h.innerText = title;
+            wrap.appendChild(h);
+            const content = document.createElement('div');
+            content.className = 'nested-group';
+            wrap.appendChild(content);
+            parent.appendChild(wrap);
+            return content;
+        }
+
+        function updateValue(type, path, value) {
+            let current = configs[type];
+            for (let i = 0; i < path.length - 1; i++) {
+                current = current[path[i]];
+            }
+            current[path[path.length - 1]] = value;
+            updatePreview();
+        }
+
+        function updatePreview() {
+            const ui = configs.ui;
+            const content = configs.content;
+            
+            // Apply Colors
+            const theme = ui.themes.dark;
+            const screen = document.getElementById('app-preview');
+            screen.style.background = theme.bg;
+            screen.style.color = theme.text;
+            
+            document.getElementById('pre-header').style.borderBottomColor = theme.border;
+            document.getElementById('pre-welcome-card').style.background = theme.cardBg;
+            document.getElementById('pre-welcome-card').style.borderColor = theme.border;
+            
+            const accent = theme.accent;
+            document.documentElement.style.setProperty('--accent', accent);
+            document.getElementById('pre-welcome-title').style.color = accent;
+            
+            // Apply Platform Styles (Simulate Mobile Android)
+            const mobile = ui.platforms.Mobile.Android;
+            const radius = mobile.borderRadius;
+            document.getElementById('pre-welcome-card').style.borderRadius = radius;
+            document.getElementById('pre-btn').style.borderRadius = radius;
+            document.getElementById('pre-btn').style.padding = mobile.buttonPadding;
+            document.getElementById('pre-title').style.fontSize = mobile.headerSize;
+            screen.style.fontSize = mobile.fontSizeBase;
+
+            // Apply Content
+            document.getElementById('pre-title').innerText = content.ui.title;
+            document.getElementById('pre-tagline').innerText = content.ui.tagline;
+            document.getElementById('pre-welcome-title').innerText = content.ui.welcome.title;
+            document.getElementById('pre-welcome-desc').innerText = content.ui.welcome.desc;
+            document.getElementById('pre-btn').innerText = content.ui.welcome.protectBtn;
+            
+            // Apply Branding
+            document.getElementById('pre-logo').src = ui.branding.logoUrl;
+        }
+
+        function exportConfigs() {
+            const download = (data, name) => {
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = name; a.click();
+            };
+            
+            // If raw tab was edited, try to parse it back
+            if (currentTab === 'raw') {
+                try {
+                    const raw = JSON.parse(document.getElementById('json-editor').value);
+                    configs.ui = raw.ui;
+                    configs.content = raw.content;
+                } catch (e) {
+                    alert("Invalid JSON in Raw Editor!");
+                    return;
+                }
+            }
+
+            download(configs.ui, 'ui-config.json');
+            setTimeout(() => download(configs.content, 'content-config.json'), 500);
+        }
+
+        function resetConfig() {
+            if(confirm("Are you sure? This will reload the original files.")) {
+                location.reload();
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

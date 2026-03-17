@@ -1,0 +1,38 @@
+[
+  {
+    "version": "1.2.6",
+    "timestamp": "2026-03-17T17:35:00Z",
+    "codename": "Joe_Sync",
+    "changes": "Resolved persistent cache issues with deep purge and UUID identity. Full license passport in About."
+  },
+  {
+    "version": "1.2.5",
+    "timestamp": "2026-03-17T17:10:00Z",
+    "codename": "Peter_Final",
+    "changes": "Enhanced Licensing: Customer fields, Grace period, and Device Owner. Default Documents storage."
+  },
+  {
+    "version": "1.2.4",
+    "timestamp": "2026-03-17T16:45:00Z",
+    "codename": "Quagmire_Final",
+    "changes": "UUID Forced Release to bypass installation conflicts."
+  },
+  {
+    "version": "1.2.3",
+    "timestamp": "2026-03-17T16:30:00Z",
+    "codename": "Sync_Test",
+    "changes": "Visual sync validation via forced header tag."
+  },
+  {
+    "version": "1.2.0",
+    "timestamp": "2026-03-17T16:00:00Z",
+    "codename": "Peter_Griffin",
+    "changes": "Consolidated Milestone: Fixed share intents, SAF saving, and final UI fixes."
+  },
+  {
+    "version": "1.1.0",
+    "timestamp": "2026-03-17T15:10:00Z",
+    "codename": "Glenn_Quagmire",
+    "changes": "Optional forensic layers (checkboxes) and refactored shielding sequence."
+  }
+]

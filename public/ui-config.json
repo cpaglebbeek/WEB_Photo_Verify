@@ -1,0 +1,47 @@
+{
+  "themes": {
+    "dark": {
+      "bg": "#0f172a",
+      "cardBg": "#1e293b",
+      "text": "#f8fafc",
+      "textDim": "#94a3b8",
+      "border": "#334155",
+      "accent": "#2563eb",
+      "success": "#16a34a",
+      "warning": "#ca8a04",
+      "error": "#dc2626"
+    },
+    "light": {
+      "bg": "#f8fafc",
+      "cardBg": "#ffffff",
+      "text": "#0f172a",
+      "textDim": "#64748b",
+      "border": "#e2e8f0",
+      "accent": "#2563eb",
+      "success": "#059669",
+      "warning": "#d97706",
+      "error": "#dc2626"
+    }
+  },
+  "platforms": {
+    "Mobile": {
+      "Android": {
+        "borderRadius": "16px",
+        "buttonPadding": "12px 24px",
+        "fontSizeBase": "16px"
+      }
+    },
+    "Desktop": {
+      "Windows": {
+        "borderRadius": "12px",
+        "buttonPadding": "10px 20px",
+        "fontSizeBase": "14px"
+      }
+    }
+  },
+  "branding": {
+    "logoUrl": "",
+    "primaryColor": "#2563eb",
+    "secondaryColor": "#16a34a"
+  }
+}

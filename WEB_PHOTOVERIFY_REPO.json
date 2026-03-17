@@ -1,0 +1,46 @@
+{
+  "project": {
+    "name": "WEB_PhotoVerify",
+    "codename": "ChromeApp_Beta",
+    "version": "WEB-1.0.0",
+    "status": "Web/ChromeApp Variant",
+    "philosophy": "Democratic Forensic Suite for web browsers and Chrome-based applications. Sovereignty first: 100% local processing.",
+    "architecture": "React 19 + TypeScript 5 (PWA) with LocalStorage and IndexedDB support."
+  },
+  "scientific_layers": [
+    {
+      "layer": 1,
+      "name": "Invisible Stamp (LSB+)",
+      "functional": "Verbergt een unieke 6-cijferige code direct in de pixel-luminantie.",
+      "technical": "4-bit differential encoding in de blauwe kanalen van de interior pixels. Stable against re-saves.",
+      "logic": "Auto-generated 6-character hex code based on (Date.now() XOR Math.random()). Offered fresh on each shield entry unless a hard default is set."
+    },
+    {
+      "layer": 2,
+      "name": "Visual DNA (pHash)",
+      "functional": "Identificeert het 'concept' van de foto, ongeacht kleine wijzigingen.",
+      "technical": "DCT-based Perceptual Hashing (16x16 grid). Vergelijking via Hamming Distance.",
+      "logic": "Calculated on the cropped interior to ensure consistency with the stamped data."
+    }
+  ],
+  "components": [
+    {
+      "id": "UI_DASHBOARD",
+      "functional": "Dashboard & Navigatie",
+      "design": "Web-optimized card layout for desktop and laptop screens.",
+      "technical": "App.tsx (Mode: START) + App.css (.card-action)."
+    },
+    {
+      "id": "SYS_WEB_STORAGE",
+      "functional": "Browser Storage Manager",
+      "design": "Gebruikt IndexedDB voor grotere bestanden en LocalStorage voor configuratie.",
+      "technical": "src/utils/virtualStorage.ts"
+    },
+    {
+      "id": "FEAT_PWA",
+      "functional": "Progressive Web App Support",
+      "design": "Offline beschikbaarheid via Service Workers.",
+      "technical": "vite.config.ts + manifest.webmanifest"
+    }
+  ]
+}
