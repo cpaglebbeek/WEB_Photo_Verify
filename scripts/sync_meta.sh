@@ -17,8 +17,10 @@ CORE_FILES=(
   "license-manager.html"
   "src/utils/runtime.ts"
   "src/utils/machineId.ts"
+  "src/utils/license.ts"
   "src/utils/metadata.ts"
   "src/utils/pdfGenerator.ts"
+  "src/engine_version.json"
 )
 
 # 1. Controleer of de Meta-repository lokaal aanwezig is

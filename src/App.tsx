@@ -16,6 +16,7 @@ import { getDeviceHash, checkLicense, applyManualLicense, testConnection, type L
 import { getRuntimeFeatures } from './utils/runtime';
 import { extractMetadata, type ImageMetadata, formatExifSummary } from './utils/metadata';
 import versionData from './version.json';
+import engineData from './engine_version.json';
 import './App.css';
 
 interface NativeBridgePlugin {
@@ -552,8 +553,12 @@ function App() {
           <div className="app-branding" onClick={() => setMode('START')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '15px' }}>
             <img src="appicon.jpg" alt="Logo" style={{ height: '50px', borderRadius: '8px' }} />
             <div style={{ textAlign: 'left' }}>
-              <h1 style={{ fontSize: '1.8rem', lineHeight: '1' }}>{content.ui.title} <span style={{ color: '#10b981', fontSize: '0.8rem' }}>[STABLE_V1.2.7]</span></h1>
-              <small style={{ color: '#10b981', fontWeight: 'bold' }}>v{versionData.current}</small>
+              <h1 style={{ fontSize: '1.8rem', lineHeight: '1' }}>
+                {content.ui.title} <span style={{ fontSize: '0.8rem', color: '#10b981', verticalAlign: 'middle' }}>v{engineData.engine_version}-v{versionData.current}</span>
+              </h1>
+              <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 'bold', marginTop: '4px' }}>
+                Engine: {engineData.engine_codename}
+              </div>
             </div>
           </div>
           <div className="nav-cluster">
@@ -561,6 +566,7 @@ function App() {
             <button className="btn btn-nav" onClick={() => setMode('ABOUT')} title="About">❓</button>
             <button className="btn btn-nav" onClick={() => setMode('SETTINGS')}>⚙️</button>
             <button className="btn btn-nav" onClick={() => setMode('START')}>🏠 Home</button>
+            <button className="btn btn-nav" onClick={() => setMode('VERIFY')} style={{ background: 'rgba(96, 165, 250, 0.1)', color: '#60a5fa', border: '1px solid #60a5fa' }}>🔍 Audit</button>
             <button className="btn btn-nav btn-success" onClick={() => setMode('SHIELD_AUTO')}>🛡️ Shield</button>
           </div>
         </div>
