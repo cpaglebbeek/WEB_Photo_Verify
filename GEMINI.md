@@ -32,3 +32,6 @@
 - **Local Browser Testing (Web):** Elke succesvolle build (`npm run build`) MOET direct leiden tot een lokale test via een webbrowser om de PWA-functionaliteit en de Machine Hash stabiliteit te verifiëren.
 - **Preview Command:** Gebruik `npm run preview` om de productie-build lokaal te hosten.
 - **No Implicit APK:** Bij een 'build' opdracht in de context van Web of Meta wordt NOOIT automatisch een Android APK gegenereerd. Dit moet specifiek gevraagd worden.
+
+## Versioning Mandate
+- **Mandatory Increment:** Elke functionele of technische wijziging MOET gepaard gaan met een verhoging van het versienummer in `version.json`, `package.json` en/of de platform-specifieke build-configuratie (Gradle/Xcode) vóórdat een build of sync plaatsvindt.
