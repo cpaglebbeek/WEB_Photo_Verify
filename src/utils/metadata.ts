@@ -10,7 +10,7 @@ export interface ImageMetadata {
   compression: string;
   dpi: string;
   exif: any;
-  rawExif?: string; // Base64 encoded EXIF binary string
+  rawExif?: string; 
 }
 
 /**
@@ -23,12 +23,11 @@ export function extractMetadata(file: File, img: HTMLImageElement): Promise<Imag
       const arrayBuffer = e.target?.result as ArrayBuffer;
       const binaryString = String.fromCharCode(...new Uint8Array(arrayBuffer));
       
-      // Attempt to get raw EXIF for injection later
       let rawExif: string | undefined;
       try {
         rawExif = piexif.load(binaryString);
       } catch (err) {
-        console.warn('[Metadata] Failed to load raw EXIF binary string', err);
+        console.warn('[Metadata] No raw EXIF found or parsing failed', err);
       }
 
       EXIF.getData(file as any, function(this: any) {
@@ -51,8 +50,7 @@ export function extractMetadata(file: File, img: HTMLImageElement): Promise<Imag
 }
 
 /**
- * Injects metadata and a Base64 PDF report into a JPEG/PNG image.
- * Note: Browser Canvas exports data-urls. Piexif works best with JPEGs.
+ * Injects metadata and a Base64 PDF report into a JPEG image.
  */
 export function injectForensicMetadata(
   imageDataUrl: string, 
@@ -62,37 +60,28 @@ export function injectForensicMetadata(
   pdfBase64?: string
 ): string {
   try {
-    // 1. Prepare EXIF object
     let exifObj: any = originalRawExif ? piexif.load(originalRawExif) : { "0th": {}, "Exif": {}, "GPS": {} };
 
-    // 2. Inject Author/Company into Standard Fields
-    if (author) {
-      exifObj["0th"][piexif.ImageIFD.Artist] = author;
-    }
-    if (company) {
-      exifObj["0th"][piexif.ImageIFD.Copyright] = `(c) ${new Date().getFullYear()} ${company}`;
-    }
+    if (author) exifObj["0th"][piexif.ImageIFD.Artist] = author;
+    if (company) exifObj["0th"][piexif.ImageIFD.Copyright] = `(c) ${new Date().getFullYear()} ${company}`;
 
-    // 3. Inject PDF Report into a custom tag if provided
-    // We use ImageDescription (0x010e) or a custom UserComment (0x9286) for the Base64 PDF
     if (pdfBase64) {
-      const forensicMarker = `PV_REPORT_B64:${pdfBase64}`;
-      exifObj["0th"][piexif.ImageIFD.ImageDescription] = forensicMarker;
+      // Use ImageDescription to store the forensic marker
+      exifObj["0th"][piexif.ImageIFD.ImageDescription] = `PV_REPORT_B64:${pdfBase64}`;
     }
 
-    // 4. Update DateTime
     exifObj["0th"][piexif.ImageIFD.DateTime] = new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '');
 
     const exifBytes = piexif.dump(exifObj);
     return piexif.insert(exifBytes, imageDataUrl);
   } catch (err) {
     console.error('[Metadata] Injection failed:', err);
-    return imageDataUrl; // Return original if injection fails
+    return imageDataUrl;
   }
 }
 
 /**
- * Extracts a Base64 PDF report from an image if present.
+ * Extracts an embedded Base64 PDF report from an image.
  */
 export function extractEmbeddedReport(imageDataUrl: string): string | null {
   try {
@@ -101,9 +90,7 @@ export function extractEmbeddedReport(imageDataUrl: string): string | null {
     if (typeof desc === 'string' && desc.startsWith('PV_REPORT_B64:')) {
       return desc.replace('PV_REPORT_B64:', '');
     }
-  } catch (err) {
-    console.warn('[Metadata] No embedded report found or parsing failed');
-  }
+  } catch (err) {}
   return null;
 }
 
