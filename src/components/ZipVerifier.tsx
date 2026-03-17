@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import JSZip from 'jszip';
 import { Filesystem } from '@capacitor/filesystem';
+import { Capacitor } from '@capacitor/core';
 import { extractVirtualDataAsync } from '../utils/virtualStorage';
 import { generatePerceptualHashDetailed, hashToBits, compareHashesElastic } from '../utils/perceptualHash';
 import { type AnchorDeed } from '../utils/timeAnchor';
@@ -187,7 +188,7 @@ export default function ZipVerifier({ initialFile, onNativePick, onStart, onProg
       </p>
       
       <div className="input-group" style={{ marginTop: '15px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {onNativePick ? (
+        {(onNativePick && Capacitor.getPlatform() !== 'web') ? (
           <button className="btn btn-primary" onClick={handleNativeTrigger} style={{ padding: '15px', border: '2px dashed #60a5fa', background: 'rgba(96, 165, 250, 0.1)', color: '#60a5fa', display: 'block', width: '100%', cursor: 'pointer' }}>
             📂 BROWSE PHOTOVERIFY FOLDER
           </button>
