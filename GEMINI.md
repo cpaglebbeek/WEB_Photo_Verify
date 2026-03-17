@@ -35,3 +35,11 @@
 
 ## Versioning Mandate
 - **Mandatory Increment:** Elke functionele of technische wijziging MOET gepaard gaan met een verhoging van het versienummer in `version.json`, `package.json` en/of de platform-specifieke build-configuratie (Gradle/Xcode) vóórdat een build of sync plaatsvindt.
+
+## Thematic Versioning & Naming Protocol
+- **Versioning Logic (Semantic):**
+  - **GROEN (Minor):** Increment .0.1 (bijv. 1.0.0 -> 1.0.1)
+  - **ORANJE (Design):** Increment .1.0 (bijv. 1.0.1 -> 1.1.0)
+  - **ROOD (Architectural):** Increment 1.0.0 (bijv. 1.1.0 -> 2.0.0)
+- **Codename Theme:** Quantum Leap (Facts)
+- **Uniqueness:** Elke build/oplevering MOET een unieke versie en een unieke thematische codenaam hebben.
