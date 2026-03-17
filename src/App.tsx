@@ -671,18 +671,6 @@ function App() {
               <label>Content Config URL:
                 <input type="text" value={contentUrl} onChange={e => setContentUrl(e.target.value)} style={{ width: '100%', background: '#000', color: '#fff', border: '1px solid #334155', padding: '8px' }} />
               </label>
-              <label>Default Stamp Code:
-                <input 
-                  type="text" 
-                  value={sharedUid} 
-                  onChange={e => {
-                    const val = e.target.value.toUpperCase().replace(/[^0-9A-F]/g, '');
-                    if (val.length <= 6) setSharedUid(val);
-                  }} 
-                  maxLength={6}
-                  style={{ width: '100%', background: '#000', color: '#fff', border: '1px solid #334155', padding: '8px', fontFamily: 'monospace' }}
-                />
-              </label>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '20px' }}>
@@ -693,7 +681,6 @@ function App() {
                 localStorage.setItem('license_server_url', licenseServer); 
                 localStorage.setItem('ui_config_url', uiUrl); 
                 localStorage.setItem('content_config_url', contentUrl); 
-                localStorage.setItem('default_stamp_code', sharedUid);
                 alert("Settings Committed. App will reload.");
                 window.location.reload();
               }}>
@@ -778,14 +765,15 @@ function App() {
               <ZipVerifier 
                 initialFile={sharedZipBlob} 
                 onNativePick={openNativeFilePicker}
+                deviceId={license?.deviceHash || 'UNKNOWN'}
                 onStart={startProc} 
                 onProgress={setProgress} 
                 onEnd={endProc} 
               />
             </div>
-            <div className="card-glass"><CopyrightVerifier onStart={() => startProc('Scanning...')} onProgress={setProgress} onEnd={endProc} /></div>
-            <div className="card-glass"><TimeAnchorVerifier onStart={() => startProc('Auditing...')} onProgress={setProgress} onEnd={endProc} /></div>
-            <div className="card-glass"><LegacyBorderVerifier onStart={() => startProc('Verifying...')} onProgress={setProgress} onEnd={endProc} /></div>
+            <div className="card-glass"><CopyrightVerifier deviceId={license?.deviceHash || 'UNKNOWN'} onStart={() => startProc('Scanning...')} onProgress={setProgress} onEnd={endProc} /></div>
+            <div className="card-glass"><TimeAnchorVerifier deviceId={license?.deviceHash || 'UNKNOWN'} onStart={() => startProc('Auditing...')} onProgress={setProgress} onEnd={endProc} /></div>
+            <div className="card-glass"><LegacyBorderVerifier deviceId={license?.deviceHash || 'UNKNOWN'} onStart={() => startProc('Verifying...')} onProgress={setProgress} onEnd={endProc} /></div>
           </div>
         )}
       </main>

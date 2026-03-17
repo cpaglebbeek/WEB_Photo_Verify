@@ -2,6 +2,8 @@ import { useState, useRef, useEffect, type ChangeEvent } from 'react';
 import { sha256, generateCombinedProof, type AnchorDeed } from '../utils/timeAnchor';
 import { generatePerceptualHashDetailed, hashToBits, compareHashesElastic } from '../utils/perceptualHash';
 import { generateHistogram, detectQuantization, type HistogramData } from '../utils/forensics';
+import { generateForensicPDF, type ReportData } from '../utils/pdfGenerator';
+import versionData from '../version.json';
 
 const ClassificationTable = ({ currentVal }: { currentVal: number }) => {
   const getStyle = (min: number, max: number) => {
@@ -26,6 +28,7 @@ const ClassificationTable = ({ currentVal }: { currentVal: number }) => {
 };
 
 interface Props {
+  deviceId: string;
   onStart: () => void;
   onProgress: (p: number) => void;
   onEnd: () => void;
@@ -50,9 +53,10 @@ interface ComparisonData {
   currentBits: number[];
 }
 
-export default function TimeAnchorVerifier({ onStart, onProgress, onEnd }: Props) {
+export default function TimeAnchorVerifier({ deviceId, onStart, onProgress, onEnd }: Props) {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [filename, setFilename] = useState<string>('');
   const [deed, setDeed] = useState<AnchorDeed | null>(null);
   const [threshold, setThreshold] = useState<number>(0.85);
   const [auditResult, setAuditResult] = useState<AuditResult | null>(null);
@@ -101,7 +105,7 @@ export default function TimeAnchorVerifier({ onStart, onProgress, onEnd }: Props
       const reader = new FileReader();
       reader.onload = (event) => {
         const img = new Image();
-        img.onload = () => { setImage(img); setImageSrc(event.target?.result as string); setAuditResult(null); };
+        img.onload = () => { setImage(img); setImageSrc(event.target?.result as string); setFilename(file.name); setAuditResult(null); };
         img.src = event.target?.result as string;
       };
       reader.readAsDataURL(file);
@@ -117,6 +121,31 @@ export default function TimeAnchorVerifier({ onStart, onProgress, onEnd }: Props
       };
       reader.readAsText(file);
     }
+  };
+
+  const handleExportPDF = () => {
+    if (!auditResult || !image || !deed) return;
+    const report: ReportData = {
+      title: filename,
+      version: versionData.current,
+      timestamp: new Date().toLocaleString(),
+      deviceId: deviceId,
+      results: [
+        { label: 'Visual DNA', status: auditResult.success ? 'MATCH' : 'FAIL', detail: `${(auditResult.matchScore * 100).toFixed(1)}% similarity` },
+        { label: 'Time-Anchor', status: 'VERIFIED', detail: 'Deed integrity confirmed' }
+      ],
+      images: [
+        { label: 'Audit Photo', url: image.src }
+      ],
+      forensics: [
+        { label: 'Deed DNA Hash', value: deed.perceptualHash || 'N/A' },
+        { label: 'Image SHA-256', value: deed.imageHash },
+        { label: 'Audit Result', value: auditResult.message },
+        { label: 'Resize Status', value: auditResult.analysis.resize },
+        { label: 'Combined Proof', value: deed.combinedProof }
+      ]
+    };
+    generateForensicPDF(report);
   };
 
   useEffect(() => {
@@ -186,11 +215,11 @@ export default function TimeAnchorVerifier({ onStart, onProgress, onEnd }: Props
       <div className="input-group" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
         <label className="file-dropzone" style={{ padding: '1rem', border: '2px dashed #3498db', background: 'rgba(52, 152, 219, 0.05)', cursor: 'pointer', textAlign: 'center' }}>
           <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
-          <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#3498db' }}>🖼️ PHOTO</span>
+          <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#3498db' }}>{image ? '✅ PHOTO LOADED' : '🖼️ PHOTO'}</span>
         </label>
         <label className="file-dropzone" style={{ padding: '1rem', border: '2px dashed #3498db', background: 'rgba(52, 152, 219, 0.05)', cursor: 'pointer', textAlign: 'center' }}>
           <input type="file" accept=".json" onChange={handleDeedUpload} style={{ display: 'none' }} />
-          <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#3498db' }}>📄 DEED</span>
+          <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#3498db' }}>{deed ? '✅ DEED LOADED' : '📄 DEED'}</span>
         </label>
       </div>
 
@@ -211,6 +240,11 @@ export default function TimeAnchorVerifier({ onStart, onProgress, onEnd }: Props
 
       {auditResult && (
         <div className="audit-visualization" style={{ marginTop: '20px', background: '#000', padding: '20px', borderRadius: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <h3 style={{ margin: 0, color: '#3498db' }}>🔍 Audit Report</h3>
+            <button className="btn btn-primary" onClick={handleExportPDF} style={{ padding: '5px 15px', fontSize: '0.8rem', background: '#ef4444', border: 'none' }}>📄 EXPORT PDF</button>
+          </div>
+          
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', textAlign: 'center', fontSize: '0.7em', color: '#888', marginBottom: '20px' }}>
             <div><span>Deed DNA</span><canvas ref={canvasSourceRef} width={160} height={160} style={{ display: 'block', margin: '5px auto', border: '1px solid #333' }} /></div>
             <div><span>Photo DNA</span><canvas ref={canvasCurrentRef} width={160} height={160} style={{ display: 'block', margin: '5px auto', border: '1px solid #333' }} /></div>
@@ -232,6 +266,13 @@ export default function TimeAnchorVerifier({ onStart, onProgress, onEnd }: Props
           <div className={`results ${auditResult.success ? 'success' : 'error'}`}>
             <h3>{auditResult.message}</h3>
             <p>Visual Similarity: <strong style={{ color: auditResult.matchScore! >= 0.85 ? '#2ecc71' : '#e74c3c' }}>{(auditResult.matchScore! * 100).toFixed(1)}%</strong></p>
+            
+            {auditResult.matchScore! > 0.95 && auditResult.matchScore! < 1.0 && (
+              <div style={{ marginTop: '10px', padding: '10px', background: 'rgba(243, 156, 18, 0.1)', border: '1px solid #f39c12', borderRadius: '6px', fontSize: '0.8rem', textAlign: 'left' }}>
+                <strong>ℹ️ Paradox Alert:</strong> A score of ~97.7% indicates border displacement. Use <em>protected_interior.png</em> for 100% match.
+              </div>
+            )}
+            
             <ClassificationTable currentVal={auditResult.matchScore!} />
           </div>
         </div>

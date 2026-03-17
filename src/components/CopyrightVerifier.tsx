@@ -1,14 +1,17 @@
 import { useState, type ChangeEvent } from 'react';
 import { extractVirtualDataAsync } from '../utils/virtualStorage';
 import { getHistory, type HistoryEntry } from '../utils/history';
+import { generateForensicPDF, type ReportData } from '../utils/pdfGenerator';
+import versionData from '../version.json';
 
 interface Props {
+  deviceId: string;
   onStart: () => void;
   onProgress: (p: number) => void;
   onEnd: () => void;
 }
 
-export default function CopyrightVerifier({ onStart, onProgress, onEnd }: Props) {
+export default function CopyrightVerifier({ deviceId, onStart, onProgress, onEnd }: Props) {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [filename, setFilename] = useState<string>('');
   const [result, setResult] = useState<{ uid: string, confidence: number, diagnostics?: string } | null>(null);
@@ -33,6 +36,24 @@ export default function CopyrightVerifier({ onStart, onProgress, onEnd }: Props)
       img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleExportPDF = () => {
+    if (!result || !image) return;
+    const report: ReportData = {
+      title: filename,
+      version: versionData.current,
+      timestamp: new Date().toLocaleString(),
+      deviceId: deviceId,
+      results: [{ label: 'Invisible Stamp', status: 'SUCCESS', detail: `Code: ${result.uid} (${(result.confidence * 100).toFixed(1)}% confidence)` }],
+      images: [{ label: 'Scanned Photo', url: image.src }],
+      forensics: [
+        { label: 'Found UID', value: result.uid },
+        { label: 'Extraction Confidence', value: `${(result.confidence * 100).toFixed(1)}%` },
+        { label: 'Diagnostics', value: result.diagnostics || 'None' }
+      ]
+    };
+    generateForensicPDF(report);
   };
 
   const scan = async () => {
@@ -94,7 +115,10 @@ export default function CopyrightVerifier({ onStart, onProgress, onEnd }: Props)
 
       {scanAttempted && result && (
         <div className="results success">
-          <h3>Invisible Stamp Found!</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <h3 style={{ margin: 0 }}>Invisible Stamp Found!</h3>
+            <button className="btn btn-primary" onClick={handleExportPDF} style={{ padding: '5px 15px', fontSize: '0.8rem', background: '#ef4444', border: 'none' }}>📄 PDF REPORT</button>
+          </div>
           <p>Found Code: <strong style={{ fontSize: '1.5em', color: '#0f0', letterSpacing: '2px' }}>{result.uid}</strong></p>
           <p>Confidence: <strong>{(result.confidence * 100).toFixed(1)}%</strong></p>
         </div>
