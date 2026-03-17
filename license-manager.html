@@ -3,262 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PhotoVerify License Manager | Standalone</title>
+    <title>PhotoVerify License Manager v1.2</title>
     <style>
-        :root {
-            --bg: #0f172a;
-            --card: #1e293b;
-            --accent: #60a5fa;
-            --success: #10b981;
-            --text: #f8fafc;
-            --text-dim: #94a3b8;
-            --border: #334155;
-            --input-bg: #020617;
-        }
-
-        body { 
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-            background: var(--bg); 
-            color: var(--text); 
-            padding: 40px 20px; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center;
-            margin: 0;
-            min-height: 100vh;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 650px;
-        }
-
-        .card { 
-            background: var(--card); 
-            padding: 40px; 
-            border-radius: 24px; 
-            border: 1px solid var(--border); 
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5); 
-        }
-
-        .header { 
-            text-align: center; 
-            margin-bottom: 30px; 
-        }
-        
-        .header h1 { 
-            margin: 0; 
-            color: var(--accent); 
-            font-size: 1.8rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-        
-        .header p { 
-            color: var(--text-dim); 
-            font-size: 0.95rem;
-            margin-top: 8px;
-        }
-
-        .row { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 20px; 
-            margin-bottom: 20px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label { 
-            display: block; 
-            font-size: 0.75rem; 
-            color: var(--text-dim); 
-            margin-bottom: 8px; 
-            font-weight: 800; 
-            text-transform: uppercase; 
-            letter-spacing: 0.05em;
-        }
-
-        input, select, textarea { 
-            width: 100%; 
-            background: var(--input-bg); 
-            border: 1px solid var(--border); 
-            color: white; 
-            padding: 14px; 
-            border-radius: 12px; 
-            box-sizing: border-box; 
-            font-size: 1rem;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-
-        input:focus, select:focus { 
-            border-color: var(--accent); 
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
-        }
-
-        .btn-group { 
-            display: flex; 
-            gap: 12px; 
-            margin-bottom: 30px; 
-        }
-
-        button { 
-            background: var(--accent); 
-            color: white; 
-            border: none; 
-            padding: 16px; 
-            border-radius: 12px; 
-            width: 100%; 
-            cursor: pointer; 
-            font-weight: 700; 
-            font-size: 1rem;
-            transition: transform 0.1s, opacity 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
+        body { font-family: system-ui; background: #0f172a; color: white; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .card { background: #1e293b; padding: 30px; border-radius: 20px; border: 1px solid #334155; width: 100%; max-width: 700px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        label { display: block; font-size: 0.8rem; color: #94a3b8; margin-top: 10px; font-weight: bold; text-transform: uppercase; }
+        input, select, textarea { width: 100%; background: #0f172a; border: 1px solid #334155; color: white; padding: 12px; border-radius: 8px; margin: 5px 0 15px; box-sizing: border-box; font-size: 1rem; }
+        textarea { font-family: monospace; font-size: 0.8rem; resize: vertical; }
+        input:focus, textarea:focus { border-color: #60a5fa; outline: none; }
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
+        button { background: #60a5fa; color: white; border: none; padding: 15px; border-radius: 10px; width: 100%; cursor: pointer; font-weight: bold; transition: opacity 0.2s; }
         button:hover { opacity: 0.9; }
-        button:active { transform: scale(0.98); }
-
         .btn-load { background: #475569; }
-        .btn-generate { background: var(--accent); margin-top: 10px; }
-        .btn-download { background: var(--success); margin-top: 20px; }
-
-        .result { 
-            margin-top: 30px; 
-            background: #000; 
-            padding: 20px; 
-            border-radius: 16px; 
-            display: none; 
-            border: 1px solid var(--success);
-            animation: fadeIn 0.3s ease-out;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .path-hint {
-            font-family: monospace;
-            background: #111;
-            padding: 10px;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            margin-bottom: 15px;
-            border-left: 4px solid var(--accent);
-        }
-
-        .footer {
-            margin-top: 40px;
-            text-align: center;
-            font-size: 0.8rem;
-            color: var(--text-dim);
-        }
-
-        hr {
-            border: 0;
-            border-top: 1px solid var(--border);
-            margin: 30px 0;
-        }
-
-        .badge {
-            background: rgba(96, 165, 250, 0.15);
-            color: var(--accent);
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 0.7rem;
-            font-weight: 800;
-        }
+        .btn-download { background: #10b981; }
+        .btn-parse { background: #8b5cf6; margin-bottom: 20px; }
+        .result { margin-top: 20px; background: #000; padding: 15px; border-radius: 10px; font-family: monospace; display: none; word-break: break-all; border: 1px solid #10b981; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h2 { margin: 0; color: #60a5fa; }
+        .file-input { display: none; }
+        .section-title { color: #60a5fa; border-bottom: 1px solid #334155; padding-bottom: 5px; margin-top: 20px; font-size: 0.9rem; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="card">
-            <div class="header">
-                <h1>🎟️ License Manager <span class="badge">V1.2 STANDALONE</span></h1>
-                <p>Generate and manage PhotoVerify device licenses locally.</p>
+    <div class="card">
+        <div class="header">
+            <h2>🎟️ License Manager v1.2</h2>
+            <p style="color: #94a3b8; font-size: 0.9rem;">Advanced Metadata & Platform Management</p>
+        </div>
+
+        <div class="btn-group" style="margin-bottom: 20px;">
+            <button class="btn-load" onclick="document.getElementById('load-input').click()">📂 Load Existing .json</button>
+            <input type="file" id="load-input" class="file-input" accept=".json" onchange="loadLicense(event)">
+        </div>
+
+        <div class="section-title">Step 1: Identity & Platform (Extended ID)</div>
+        <label>Paste Extended Device Info from App:</label>
+        <textarea id="extended-info" placeholder="ID: A1B2...\nOS: macOS...\nBrowser: Chrome...\n..." rows="4"></textarea>
+        <button class="btn-parse" onclick="parseExtendedInfo()">⚡ Parse Info & Identity</button>
+
+        <label>Device Hash (Machine ID):</label>
+        <input type="text" id="dev-id" placeholder="E.g. A1B2C3D4E5F6G7H8">
+
+        <div class="row">
+            <div>
+                <label>OS / Platform:</label>
+                <input type="text" id="os-info" placeholder="e.g. macOS">
             </div>
-
-            <div class="btn-group">
-                <button class="btn-load" onclick="document.getElementById('load-input').click()">📂 Load Existing JSON</button>
-                <input type="file" id="load-input" style="display:none" accept=".json" onchange="loadLicense(event)">
+            <div>
+                <label>Browser / Engine:</label>
+                <input type="text" id="browser-info" placeholder="e.g. Chrome">
             </div>
+        </div>
+        <label>Runtime Mode:</label>
+        <input type="text" id="runtime-info" placeholder="e.g. STANDALONE_PWA">
+        <label>Full User Agent:</label>
+        <input type="text" id="agent-info" placeholder="UserAgent string...">
 
-            <div class="form-group">
-                <label>Device ID (Unique Forensic Fingerprint):</label>
-                <input type="text" id="dev-id" placeholder="E.g. 5A9F2C81B0D3..." oninput="this.value = this.value.toUpperCase()">
+        <div class="section-title">Step 2: License Status & Expiry</div>
+        <div class="row">
+            <div>
+                <label>Status:</label>
+                <select id="status">
+                    <option value="true">Active</option>
+                    <option value="false">Revoked</option>
+                </select>
             </div>
-
-            <div class="row">
-                <div class="form-group">
-                    <label>Status:</label>
-                    <select id="status">
-                        <option value="true">✅ ACTIVE / AUTHORIZED</option>
-                        <option value="false">🚫 REVOKED / INACTIVE</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Expiration Type:</label>
-                    <select id="expiry-type" onchange="toggleExpiryInput()">
-                        <option value="days">Limit by Days</option>
-                        <option value="none">Infinite (No Expiry)</option>
-                    </select>
-                </div>
-            </div>
-
-            <div id="days-container" class="form-group">
-                <label>Days until expiration (from today):</label>
-                <input type="number" id="expiry-days" value="365">
-            </div>
-
-            <hr>
-
-            <div class="form-group">
-                <label>Customer / Licensee Name:</label>
-                <input type="text" id="cust-name" placeholder="Full name of the owner">
-            </div>
-
-            <div class="row">
-                <div class="form-group">
-                    <label>Company / Organization:</label>
-                    <input type="text" id="comp-name" placeholder="Optional">
-                </div>
-                <div class="form-group">
-                    <label>Internal Reference ID:</label>
-                    <input type="text" id="cust-id" placeholder="E.g. PV-2026-001">
-                </div>
-            </div>
-
-            <button class="btn-generate" onclick="generateLicense()">⚡ GENERATE LICENSE DATA</button>
-
-            <div id="result-box" class="result">
-                <label style="color: var(--success)">Target Server Path:</label>
-                <div class="path-hint">/licenses/<span id="path-id" style="color: var(--accent)">DEVICE_ID</span>.json</div>
-                
-                <label>JSON Content:</label>
-                <textarea id="json-out" readonly style="height: 200px; font-family: 'Cascadia Code', Consolas, monospace; color: var(--success); font-size: 0.85rem;"></textarea>
-                
-                <button onclick="downloadLicense()" class="btn-download">💾 DOWNLOAD [ID].JSON</button>
+            <div>
+                <label>Expiration:</label>
+                <select id="expiry-type" onchange="toggleExpiryInput()">
+                    <option value="days">Days from now</option>
+                    <option value="none">None (Infinite)</option>
+                </select>
             </div>
         </div>
 
-        <div class="footer">
-            PhotoVerify Forensic Suite &bull; Local-First Security &bull; 2026
+        <div id="days-container">
+            <label>Days until expiration:</label>
+            <input type="number" id="expiry-days" value="365">
+        </div>
+
+        <div class="section-title">Step 3: Customer Details</div>
+        <label>Customer Name:</label>
+        <input type="text" id="cust-name" placeholder="John Doe">
+
+        <div class="row">
+            <div>
+                <label>Company Name:</label>
+                <input type="text" id="comp-name" placeholder="Acme Corp">
+            </div>
+            <div>
+                <label>Customer ID:</label>
+                <input type="text" id="cust-id" placeholder="CUST-001">
+            </div>
+        </div>
+
+        <button onclick="generateLicense()">Generate & Finalize License JSON</button>
+
+        <div id="result-box" class="result">
+            <p style="color: #94a3b8; margin-top: 0;">Upload to Server: <span id="path-hint" style="color: #60a5fa;">/licenses/[ID].json</span></p>
+            <textarea id="json-out" readonly style="height: 250px; background: #111; color: #10b981; border: 1px solid #222; padding: 10px; box-sizing: border-box; font-size: 0.8rem;"></textarea>
+            <button onclick="downloadLicense()" class="btn-download" style="margin-top: 15px;">💾 Download [ID].json</button>
         </div>
     </div>
 
     <script>
+        let currentJson = null;
+        let currentId = null;
+
         function toggleExpiryInput() {
             const type = document.getElementById('expiry-type').value;
             document.getElementById('days-container').style.display = type === 'days' ? 'block' : 'none';
+        }
+
+        function parseExtendedInfo() {
+            const text = document.getElementById('extended-info').value;
+            if (!text) return alert("Please paste information first.");
+
+            const lines = text.split('\n');
+            lines.forEach(line => {
+                if (line.startsWith('ID:')) document.getElementById('dev-id').value = line.replace('ID:', '').trim();
+                if (line.startsWith('OS:')) document.getElementById('os-info').value = line.replace('OS:', '').trim();
+                if (line.startsWith('Browser:')) document.getElementById('browser-info').value = line.replace('Browser:', '').trim();
+                if (line.startsWith('Runtime:')) document.getElementById('runtime-info').value = line.replace('Runtime:', '').trim();
+                if (line.startsWith('Agent:')) document.getElementById('agent-info').value = line.replace('Agent:', '').trim();
+            });
+            alert("Platform info parsed successfully!");
         }
 
         function loadLicense(event) {
@@ -268,7 +138,7 @@
             reader.onload = function(e) {
                 try {
                     const json = JSON.parse(e.target.result);
-                    document.getElementById('dev-id').value = file.name.replace('.json', '').toUpperCase();
+                    document.getElementById('dev-id').value = file.name.replace('.json', '');
                     document.getElementById('status').value = json.active ? "true" : "false";
                     
                     if (json.expiry > 4000000000000) {
@@ -282,22 +152,26 @@
                     document.getElementById('cust-name').value = json.name || '';
                     document.getElementById('comp-name').value = json.company || '';
                     document.getElementById('cust-id').value = json.customerId || '';
+
+                    if (json.platform) {
+                        document.getElementById('os-info').value = json.platform.os || '';
+                        document.getElementById('browser-info').value = json.platform.browser || '';
+                        document.getElementById('runtime-info').value = json.platform.runtime || '';
+                        document.getElementById('agent-info').value = json.platform.userAgent || '';
+                    }
                     
                     toggleExpiryInput();
-                    alert("✅ License loaded successfully!");
+                    alert("License loaded successfully!");
                 } catch (err) {
-                    alert("❌ Error: Invalid JSON format.");
+                    alert("Error parsing JSON file.");
                 }
             };
             reader.readAsText(file);
         }
 
-        let currentData = null;
-        let currentId = '';
-
         function generateLicense() {
             const id = document.getElementById('dev-id').value.trim().toUpperCase();
-            if (id.length < 8) return alert("⚠️ Invalid Device ID. Must be a valid fingerprint (min. 8 chars).");
+            if (id.length < 8) return alert("Invalid Device ID. Must be at least 8 chars.");
             
             const active = document.getElementById('status').value === "true";
             const expiryType = document.getElementById('expiry-type').value;
@@ -311,32 +185,36 @@
             }
             
             currentId = id;
-            currentData = {
+            currentJson = {
                 active: active,
                 expiry: expiryTs,
                 name: document.getElementById('cust-name').value.trim(),
                 company: document.getElementById('comp-name').value.trim(),
                 customerId: document.getElementById('cust-id').value.trim(),
+                platform: {
+                    os: document.getElementById('os-info').value.trim(),
+                    browser: document.getElementById('browser-info').value.trim(),
+                    runtime: document.getElementById('runtime-info').value.trim(),
+                    userAgent: document.getElementById('agent-info').value.trim()
+                },
                 message: active ? "License Verified" : "License Revoked by Admin",
                 generated: new Date().toISOString(),
                 version: "1.2"
             };
 
-            document.getElementById('json-out').value = JSON.stringify(currentData, null, 2);
-            document.getElementById('path-id').innerText = id;
+            document.getElementById('json-out').value = JSON.stringify(currentJson, null, 2);
+            document.getElementById('path-hint').innerText = `/licenses/${id}.json`;
             document.getElementById('result-box').style.display = 'block';
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            window.scrollTo(0, document.body.scrollHeight);
         }
 
         function downloadLicense() {
-            if (!currentData) return;
-            const blob = new Blob([JSON.stringify(currentData, null, 2)], { type: 'application/json' });
+            const blob = new Blob([JSON.stringify(currentJson, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
             a.download = `${currentId}.json`;
             a.click();
-            URL.revokeObjectURL(url);
         }
     </script>
 </body>

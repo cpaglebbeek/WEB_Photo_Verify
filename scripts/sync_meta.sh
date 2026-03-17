@@ -14,6 +14,11 @@ CORE_FILES=(
   "src/components/ZipVerifier.tsx"
   "public/content-config.json"
   "public/ui-config.json"
+  "license-manager.html"
+  "src/utils/runtime.ts"
+  "src/utils/machineId.ts"
+  "src/utils/metadata.ts"
+  "src/utils/pdfGenerator.ts"
 )
 
 # 1. Controleer of de Meta-repository lokaal aanwezig is
