@@ -1,3 +1,5 @@
+import { Capacitor, CapacitorHttp, type HttpResponse } from '@capacitor/core';
+import { Device } from '@capacitor/device';
 import { generateMachineHash } from './machineId';
 
 export interface LicenseStatus {
@@ -19,8 +21,23 @@ const STORAGE_KEY = 'photoverify_license_state';
  */
 export const getDeviceHash = async (): Promise<string> => {
   try {
-    const shortHash = await generateMachineHash();
-    return shortHash;
+    if (Capacitor.isNativePlatform()) {
+      const info = await Device.getId();
+      const infoObj = await Device.getInfo();
+      // Use original native hash logic for stability on mobile
+      const identifier = info.identifier || 'UNKNOWN_ID';
+      const model = infoObj.model || 'UNKNOWN_MODEL';
+      const seed = `${identifier}_${model}_PV_SALT_2026`;
+      // Use simple fallback hash since subtle crypto might be tricky in native background
+      let hval = 0x811c9dc5;
+      for (let i = 0; i < seed.length; i++) {
+        hval ^= seed.charCodeAt(i);
+        hval += (hval << 1) + (hval << 4) + (hval << 7) + (hval << 8) + (hval << 24);
+      }
+      return (hval >>> 0).toString(16).toUpperCase().padStart(16, '0');
+    } else {
+      return await generateMachineHash();
+    }
   } catch (err) {
     console.error(`[License] Device Identification failed:`, err);
     return 'DEVICE_ID_ERROR';
@@ -29,7 +46,6 @@ export const getDeviceHash = async (): Promise<string> => {
 
 /**
  * Checks server for license validity. 
- * Local-First: Checks localStorage first for valid, non-expired license.
  */
 export const checkLicense = async (
   hash: string, 
@@ -40,38 +56,30 @@ export const checkLicense = async (
   const sanitizedServerUrl = serverUrl.replace(/\/$/, '');
   const localState: LicenseStatus = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
   const now = Date.now();
-  const GRACE_PERIOD = 24 * 60 * 60 * 1000; // 1 Day
+  const GRACE_PERIOD = 24 * 60 * 60 * 1000;
 
-  // 1. Fast Path
-  const isExpired = localState && localState.expiry <= now && localState.expiry < 4000000000000;
-  if (!forceSync && localState && localState.deviceHash === hash && localState.active && !isExpired) {
-    const timeSinceLastCheck = now - localState.lastCheck;
-    if (timeSinceLastCheck < GRACE_PERIOD) {
+  if (!forceSync && localState && localState.deviceHash === hash && localState.active && (localState.expiry > now || localState.expiry > 4000000000000)) {
+    if (now - localState.lastCheck < GRACE_PERIOD) {
       return { ...localState, message: localState.message || "License Active (Offline)" };
     }
   }
 
-  // 2. Sync Path
   const fetchUrl = `${sanitizedServerUrl}/licenses/${hash}.json`;
-  onLog?.(`[License] Requesting: GET ${fetchUrl}`);
+  onLog?.(`[License] Syncing: GET ${fetchUrl}`);
   
   try {
-    const res = await fetch(fetchUrl, {
-      headers: { 'Accept': 'application/json' }
-    });
-    
-    onLog?.(`[License] HTTP Status: ${res.status} ${res.statusText}`);
-    
-    if (!res.ok) {
-      const errorText = await res.text().catch(() => 'No body');
-      onLog?.(`[License] Error Body: ${errorText.substring(0, 200)}`);
-      if (res.status === 404) throw new Error(`ID ${hash} not registered on server`);
-      throw new Error(`Server error: ${res.status}`);
+    let serverData;
+    if (Capacitor.isNativePlatform()) {
+      const res: HttpResponse = await CapacitorHttp.get({ url: fetchUrl, headers: { 'Accept': 'application/json' } });
+      if (res.status !== 200) throw new Error(`Status ${res.status}`);
+      serverData = res.data;
+    } else {
+      const res = await fetch(fetchUrl, { headers: { 'Accept': 'application/json' } });
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+      serverData = await res.json();
     }
     
-    const serverData = await res.json();
-    onLog?.(`[License] Response Data: ${JSON.stringify(serverData)}`);
-    
+    onLog?.(`[License] Success: ${JSON.stringify(serverData)}`);
     const newState: LicenseStatus = {
       active: serverData.active && (serverData.expiry > now || serverData.expiry > 4000000000000),
       expiry: serverData.expiry,
@@ -80,86 +88,46 @@ export const checkLicense = async (
       message: serverData.message || "License Verified",
       name: serverData.name,
       company: serverData.company,
-      customerId: serverData.customerId,
-      isGracePeriod: false
+      customerId: serverData.customerId
     };
-    
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
     return newState;
-  } catch (err: unknown) {
-    const error = err as Error;
-    console.error(`[License] Fetch failed:`, error);
-    
-    // 3. Fallback Path: If server fails, check if we can stay in offline grace period
-    if (localState && localState.deviceHash === hash) {
-      const timeSinceLastCheck = now - localState.lastCheck;
-      if (timeSinceLastCheck < GRACE_PERIOD) {
-        return { ...localState, isGracePeriod: true, message: "Offline Mode (Grace Period Active)" };
-      }
-      return { ...localState, active: false, isGracePeriod: false, message: `Sync failed: ${error.message}` };
+  } catch (err: any) {
+    onLog?.(`[License] Sync failed: ${err.message}`);
+    if (localState && localState.deviceHash === hash && now - localState.lastCheck < GRACE_PERIOD) {
+      return { ...localState, isGracePeriod: true, message: "Offline Mode (Grace Period)" };
     }
-    
-    return { 
-      active: false, 
-      expiry: 0, 
-      deviceHash: hash, 
-      lastCheck: 0, 
-      isGracePeriod: false,
-      message: error.message.toLowerCase().includes('failed') 
-        ? `CORS/Network Error: Could not reach ${sanitizedServerUrl}. Ensure the server allows requests from your current origin (Access-Control-Allow-Origin). If you can see the file in your browser, copy the JSON and use 'Manual Activation'.` 
-        : `Activation error: ${error.message}` 
-    };
+    return { active: false, expiry: 0, deviceHash: hash, lastCheck: 0, message: `Activation Error: ${err.message}` };
   }
 };
 
-/**
- * Manually applies a license JSON content (e.g. from a file upload).
- * Yellow Fix: Bypasses network requirements for activation.
- */
-export const applyManualLicense = (serverData: any, hash: string): LicenseStatus => {
+export const applyManualLicense = (data: any, hash: string): LicenseStatus => {
   const now = Date.now();
-  
-  // Validation
-  const isValid = serverData && 
-                  serverData.active !== undefined && 
-                  serverData.expiry !== undefined;
-
-  if (!isValid) {
-    throw new Error("Invalid license file format.");
-  }
-
   const newState: LicenseStatus = {
-    active: serverData.active && (serverData.expiry > now || serverData.expiry > 4000000000000),
-    expiry: serverData.expiry,
+    active: data.active && (data.expiry > now || data.expiry > 4000000000000),
+    expiry: data.expiry,
     deviceHash: hash,
     lastCheck: now,
-    message: (serverData.message || "License Applied Manually") + " (OFFLINE)",
-    name: serverData.name,
-    company: serverData.company,
-    customerId: serverData.customerId,
-    isGracePeriod: false
+    message: (data.message || "Manual Activation") + " (OFFLINE)",
+    name: data.name,
+    company: data.company,
+    customerId: data.customerId
   };
-  
   localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
   return newState;
 };
 
-/**
- * Diagnostic tool to check if the license directory is reachable.
- * Should return 403 if directory listing is disabled (expected), 
- * or 200/404 if accessible, or throw for network/SSL errors.
- */
-export const testConnection = async (serverUrl: string): Promise<{ status: number; message: string }> => {
-  const sanitizedServerUrl = serverUrl.replace(/\/$/, '');
-  const testUrl = `${sanitizedServerUrl}/licenses/`;
-  
+export const testConnection = async (serverUrl: string) => {
+  const url = `${serverUrl.replace(/\/$/, '')}/licenses/`;
   try {
-    const res = await fetch(testUrl, { method: 'HEAD', cache: 'no-store' });
-    return { 
-      status: res.status, 
-      message: res.status === 403 ? "Forbidden (Correct: Directory listing disabled)" : `Status ${res.status}` 
-    };
-  } catch (err: any) {
-    return { status: 0, message: err.message || "Unknown Network Error" };
+    if (Capacitor.isNativePlatform()) {
+      const res = await CapacitorHttp.get({ url });
+      return { status: res.status };
+    } else {
+      const res = await fetch(url, { method: 'HEAD' });
+      return { status: res.status };
+    }
+  } catch (e: any) {
+    return { status: 0, message: e.message };
   }
 };

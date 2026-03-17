@@ -49,7 +49,7 @@ export default function LegacyBorderVerifier({ deviceId, onStart, onProgress, on
     }
   };
 
-  const generateMacroCorner = (orig: HTMLImageElement, interior: HTMLImageElement, border: HTMLImageElement): string => {
+  const generateMacroCorner = (interior: HTMLImageElement, border: HTMLImageElement): string => {
     const zoomSize = 20; // 20x20 pixels
     const displaySize = 200; // Display as 200x200
     const canvas = document.createElement('canvas');
@@ -124,7 +124,7 @@ export default function LegacyBorderVerifier({ deviceId, onStart, onProgress, on
     onProgress(10);
     
     // Generate Macro Zoom
-    const zoom = generateMacroCorner(original, cropped, proof);
+    const zoom = generateMacroCorner(original, cropped);
     setCornerZoom(zoom);
 
     const width = original.width;

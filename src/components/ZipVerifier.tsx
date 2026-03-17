@@ -5,7 +5,8 @@ import { Capacitor } from '@capacitor/core';
 import { extractVirtualDataAsync } from '../utils/virtualStorage';
 import { generatePerceptualHashDetailed, hashToBits, compareHashesElastic } from '../utils/perceptualHash';
 import { type AnchorDeed } from '../utils/timeAnchor';
-import { generateForensicPDF, type ReportData } from '../utils/pdfGenerator';
+import { generateForensicPDF, type ReportData, openEmbeddedReport } from '../utils/pdfGenerator';
+import { extractEmbeddedReport } from '../utils/metadata';
 import versionData from '../version.json';
 
 interface Props {
@@ -20,6 +21,7 @@ interface Props {
 interface FileInfo {
   name: string;
   url: string;
+  embeddedReport?: string | null;
 }
 
 interface ZipAuditResult {
@@ -127,12 +129,18 @@ export default function ZipVerifier({ initialFile, onNativePick, deviceId, onSta
       const [origImg, intImg] = await Promise.all([loadImage(originalBlob), loadImage(interiorBlob)]);
       const borderImg = borderBlob ? await loadImage(borderBlob) : null;
 
+      // Extract embedded reports if available
+      const intDataUrl = await new Promise<string>(r => {
+        const reader = new FileReader(); reader.onload = e => r(e.target?.result as string); reader.readAsDataURL(interiorBlob);
+      });
+      const embeddedReport = extractEmbeddedReport(intDataUrl);
+
       const auditRes: ZipAuditResult = {
         stamp: { status: 'NOT_PRESENT' }, dna: { status: 'NOT_PRESENT' }, border: { status: 'NOT_PRESENT' },
         deed: deed ? { status: 'SUCCESS', data: deed } : { status: 'NOT_PRESENT' },
         files: {
           original: { name: originalName, url: URL.createObjectURL(originalBlob) },
-          interior: { name: interiorName, url: URL.createObjectURL(interiorBlob) },
+          interior: { name: interiorName, url: URL.createObjectURL(interiorBlob), embeddedReport },
           border: borderName ? { name: borderName, url: URL.createObjectURL(borderBlob!) } : undefined,
           deed: deedName ? { name: deedName } : undefined
         }
@@ -203,11 +211,19 @@ export default function ZipVerifier({ initialFile, onNativePick, deviceId, onSta
   return (
     <div className="component-container">
       <h2 style={{ color: '#60a5fa' }}>⚡ One-Click Bundle Audit</h2>
+      <p style={{ fontSize: '0.9rem', color: '#94a3b8' }}>
+        Select a PhotoVerify evidence package (.zip) to verify all security layers.
+      </p>
+      
       <div className="input-group" style={{ marginTop: '15px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {(onNativePick && Capacitor.getPlatform() !== 'web') ? (
-          <button className="btn btn-primary" onClick={handleNativeTrigger} style={{ padding: '15px', border: '2px dashed #60a5fa', background: 'rgba(96, 165, 250, 0.1)', color: '#60a5fa', display: 'block', width: '100%', cursor: 'pointer' }}>📂 BROWSE PHOTOVERIFY FOLDER</button>
+          <button className="btn btn-primary" onClick={handleNativeTrigger} style={{ padding: '15px', border: '2px dashed #60a5fa', background: 'rgba(96, 165, 250, 0.1)', color: '#60a5fa', display: 'block', width: '100%', cursor: 'pointer' }}>
+            📂 BROWSE PHOTOVERIFY FOLDER
+          </button>
         ) : (
-          <label htmlFor="zip-upload" className="btn btn-primary" style={{ display: 'block', cursor: 'pointer', padding: '15px', border: '2px dashed #60a5fa', background: 'rgba(96, 165, 250, 0.1)' }}>📂 BROWSE EVIDENCE ZIP</label>
+          <label htmlFor="zip-upload" className="btn btn-primary" style={{ display: 'block', cursor: 'pointer', padding: '15px', border: '2px dashed #60a5fa', background: 'rgba(96, 165, 250, 0.1)' }}>
+            📂 BROWSE EVIDENCE ZIP
+          </label>
         )}
         <input id="zip-upload" type="file" accept=".zip" onChange={handleZipUpload} style={{ display: 'none' }} />
       </div>
@@ -216,7 +232,9 @@ export default function ZipVerifier({ initialFile, onNativePick, deviceId, onSta
         <div className="results" style={{ marginTop: '20px', background: 'rgba(0,0,0,0.3)', padding: '20px', borderRadius: '12px', textAlign: 'left' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333', paddingBottom: '10px' }}>
             <h3 style={{ margin: 0, color: '#60a5fa' }}>🔍 Bundle Report</h3>
-            <button className="btn btn-primary" onClick={handleExportPDF} style={{ padding: '5px 15px', fontSize: '0.8rem', background: '#ef4444', border: 'none' }}>📄 EXPORT PDF REPORT</button>
+            <button className="btn btn-primary" onClick={handleExportPDF} style={{ padding: '5px 15px', fontSize: '0.8rem', background: '#ef4444', border: 'none' }}>
+              📄 EXPORT PDF REPORT
+            </button>
           </div>
           
           <h4 style={{ color: '#94a3b8', fontSize: '0.8rem', marginTop: '15px', textTransform: 'uppercase' }}>🖼️ Evidence Gallery</h4>
@@ -233,6 +251,9 @@ export default function ZipVerifier({ initialFile, onNativePick, deviceId, onSta
                 <img src={result.files.interior.url} style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #334155' }} />
                 <div style={{ marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{result.files.interior.name}</div>
                 <strong style={{ color: '#60a5fa' }}>Stamped Interior</strong>
+                {result.files.interior.embeddedReport && (
+                  <button className="btn btn-primary" onClick={() => openEmbeddedReport(result.files.interior!.embeddedReport!)} style={{ fontSize: '0.6rem', padding: '2px 5px', marginTop: '5px', width: '100%' }}>📄 VIEW EMBEDDED PDF</button>
+                )}
               </div>
             )}
             {result.border.cornerZoom && (

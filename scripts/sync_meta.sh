@@ -11,22 +11,28 @@ CORE_FILES=(
   "src/utils/zipper.ts"
   "src/utils/forensics.ts"
   "src/utils/watermark.ts"
+  "src/utils/virtualStorage.ts"
+  "src/utils/history.ts"
+  "src/utils/license.ts"
+  "src/utils/machineId.ts"
+  "src/utils/runtime.ts"
+  "src/utils/metadata.ts"
+  "src/utils/pdfGenerator.ts"
+  "src/utils/fileSaver.ts"
   "src/components/ZipVerifier.tsx"
+  "src/components/LegacyBorderVerifier.tsx"
+  "src/components/CopyrightVerifier.tsx"
+  "src/components/TimeAnchorVerifier.tsx"
+  "src/components/ProcessingOverlay.tsx"
+  "src/engine_version.json"
   "public/content-config.json"
   "public/ui-config.json"
   "license-manager.html"
-  "src/utils/runtime.ts"
-  "src/utils/machineId.ts"
-  "src/utils/license.ts"
-  "src/utils/metadata.ts"
-  "src/utils/pdfGenerator.ts"
-  "src/engine_version.json"
 )
 
 # 1. Controleer of de Meta-repository lokaal aanwezig is
 if [ ! -d "$META_DIR" ]; then
-  echo "FATAL: Meta_PhotoVerify (Master) niet gevonden. Build afgebroken."
-  echo "Regie-fout: Platform-repo's mogen niet autonoom bouwen zonder Master-sync."
+  echo "FATAL: Meta_PhotoVerify (Master) niet gevonden."
   exit 1
 fi
 
@@ -36,8 +42,6 @@ for file in "${CORE_FILES[@]}"; do
   if [ -f "$file" ] && [ -f "$META_DIR/$file" ]; then
     if ! cmp -s "$file" "$META_DIR/$file"; then
        echo "[!] ABSTRACTION VIOLATION: $file is lokaal gewijzigd!"
-       echo "    -> Regel: Wijzigingen in de kernlogica MOETEN in Meta_PhotoVerify gebeuren."
-       echo "    -> Oplossing: Verplaats je wijzigingen naar de Meta-repo en run de build opnieuw."
        VIOLATIONS=$((VIOLATIONS+1))
     fi
   fi
@@ -49,10 +53,12 @@ if [ $VIOLATIONS -gt 0 ]; then
 fi
 
 # 3. Voer de synchronisatie uit
-echo "[OK] Alle core-bestanden zijn in sync met Master."
 for file in "${CORE_FILES[@]}"; do
-  cp "$META_DIR/$file" "$file"
-  echo "[SYNCED] $file"
+  mkdir -p "$(dirname "$file")"
+  if [ -f "$META_DIR/$file" ]; then
+    cp "$META_DIR/$file" "$file"
+    echo "[SYNCED] $file"
+  fi
 done
 
-echo "--- [LAYER INTEGRITY] Sync geslaagd. Build mag doorgaan. ---"
+echo "--- [LAYER INTEGRITY] Sync geslaagd. ---"
