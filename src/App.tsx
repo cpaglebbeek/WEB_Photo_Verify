@@ -448,6 +448,11 @@ function App() {
         <div className="card-glass text-center" style={{ maxWidth: '450px', width: '100%' }}>
           <span style={{ fontSize: '4rem' }}>🛡️</span>
           <h2>Activation Required</h2>
+          <div style={{ marginBottom: '15px' }}>
+            <span style={{ background: '#1e293b', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', color: '#10b981', border: '1px solid #334155' }}>
+              PhotoVerify v{versionData.current}
+            </span>
+          </div>
           
           <div style={{ background: '#000', padding: '15px', borderRadius: '10px', margin: '20px 0', border: '1px solid #334155' }}>
             <small style={{ color: 'var(--text-dim)', display: 'block', marginBottom: '5px' }}>YOUR DEVICE ID</small>
