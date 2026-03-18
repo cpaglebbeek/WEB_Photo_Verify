@@ -13,3 +13,21 @@ Tijdens deze sessie is de PhotoVerify ecosysteem architectuur tot in detail verf
 - **Pixel-perfect Forensics:** Overstap naar een Lossless PNG Pipeline (PV-F05) en een Solid State Reconstructie (PV-F03) voor de Physical Border om 100% geometrische integriteit te garanderen.
 - **Licentiebeheer:** Robuust Machine ID (PV-F20) en uitgebreide License Manager (PV-F14) met platform-metadata.
 - **Adaptive Runtime:** Intelligente detectie van de runtime-omgeving (PV-F11).
+
+### Sessie Samenvatting: 2026-03-18 19:09:01
+
+Tijdens deze interactie zijn de volgende punten afgehandeld:
+- **Claude Synchronisatie Protocol:** Gedetailleerd protocol opgesteld in 'CLAUDESYNC.md' voor bidirectionele data-uitwisseling tussen Gemini en Claude.
+- **Geïntegreerde Trigger:** De "over en uit" prompt fungeert nu als de universele trigger voor synchronisatie (export voor Claude) in zowel Gemini als, geïnstrueerd, voor Claude.
+- **Conflict Resolutie (Git & Gebruiker):** Expliciete strategie vastgelegd waarbij Git de 'Single Source of Truth' is voor gecommitteerde code, maar de gebruiker de doorslag geeft bij conflicten in recente context.
+- **Claude Setup Instructies:** Instructies voor Claude's synchronisatie () zijn aangemaakt en beschikbaar gesteld.
+
+
+### Sessie Samenvatting: 2026-03-18 19:09:12
+
+Tijdens deze interactie zijn de volgende punten afgehandeld:
+- **Claude Synchronisatie Protocol:** Gedetailleerd protocol opgesteld in 'CLAUDESYNC.md' voor bidirectionele data-uitwisseling tussen Gemini en Claude.
+- **Geïntegreerde Trigger:** De "over en uit" prompt fungeert nu als de universele trigger voor synchronisatie (export voor Claude) in zowel Gemini als, geïnstrueerd, voor Claude.
+- **Conflict Resolutie (Git & Gebruiker):** Expliciete strategie vastgelegd waarbij Git de 'Single Source of Truth' is voor gecommitteerde code, maar de gebruiker de doorslag geeft bij conflicten in recente context.
+- **Claude Setup Instructies:** Instructies voor Claude's synchronisatie ('sync_setup.txt') zijn aangemaakt en beschikbaar gesteld.
+
