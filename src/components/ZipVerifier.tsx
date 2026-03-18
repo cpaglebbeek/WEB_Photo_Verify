@@ -168,8 +168,13 @@ export default function ZipVerifier({ initialFile, onNativePick, deviceId, onSta
         auditRes.border.cornerZoom = generateMacroCorner(intImg, borderImg);
         const fullCanvas = document.createElement('canvas');
         fullCanvas.width = origImg.width; fullCanvas.height = origImg.height;
-        const fCtx = fullCanvas.getContext('2d', { willReadFrequently: true })!;
-        fCtx.drawImage(intImg, 1, 1); fCtx.drawImage(borderImg, 0, 0);
+        const fCtx = fullCanvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' })!;
+        fCtx.imageSmoothingEnabled = false;
+
+        // RECONSTRUCTION ORDER: Border first, then Interior Overwrite
+        fCtx.drawImage(borderImg, 0, 0); 
+        fCtx.drawImage(intImg, 1, 1); 
+
         const reconData = fCtx.getImageData(0, 0, fullCanvas.width, fullCanvas.height).data;
         fCtx.drawImage(origImg, 0, 0);
         const origData = fCtx.getImageData(0, 0, fullCanvas.width, fullCanvas.height).data;

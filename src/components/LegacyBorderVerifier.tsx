@@ -141,10 +141,15 @@ export default function LegacyBorderVerifier({ deviceId, onStart, onProgress, on
     onProgress(30);
     await yieldToMain();
 
-    // 2. Reconstruct from parts
+    // 2. Reconstruct from parts using SOLID overwrite (No alpha blending)
     ctx.clearRect(0, 0, width, height);
-    ctx.drawImage(cropped, 1, 1);
+    
+    // First, draw the Border pixels (they are now on a solid background)
     ctx.drawImage(proof, 0, 0);
+    
+    // Then, OVERWRITE the interior (this ensures the seam is 100% sharp)
+    ctx.drawImage(cropped, 1, 1);
+    
     const reconstructedData = ctx.getImageData(0, 0, width, height).data;
     onProgress(60);
     await yieldToMain();

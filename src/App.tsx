@@ -143,21 +143,42 @@ function App() {
     const code = sharedUid.padStart(6, '0').toUpperCase();
     const w = sharedImage.width; const h = sharedImage.height;
     startProc("Shielding Image...");
+    
+    // 1. Create a Master Canvas with strict color settings
     const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
     const ctx = canvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' })!;
+    ctx.imageSmoothingEnabled = false;
     ctx.drawImage(sharedImage, 0, 0);
 
     let interiorCanvas = document.createElement('canvas');
+    let borderCanvas = null;
+
     if (useBorder) {
+      // 2. Extract CLEAN 1-pixel border into a SOLID canvas (No transparency to avoid pre-multiplication artifacts)
+      borderCanvas = document.createElement('canvas'); borderCanvas.width = w; borderCanvas.height = h;
+      const bCtx = borderCanvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' })!;
+      bCtx.imageSmoothingEnabled = false;
+      bCtx.fillStyle = '#000'; bCtx.fillRect(0, 0, w, h); // Start with solid background
+      
+      // Copy pixels one by one for absolute certainty
+      bCtx.drawImage(canvas, 0, 0, w, 1, 0, 0, w, 1); // Top
+      bCtx.drawImage(canvas, 0, h - 1, w, 1, 0, h - 1, w, 1); // Bottom
+      bCtx.drawImage(canvas, 0, 1, 1, h - 2, 0, 1, 1, h - 2); // Left
+      bCtx.drawImage(canvas, w - 1, 1, 1, h - 2, w - 1, 1, 1, h - 2); // Right
+
+      // 3. Extract CLEAN interior
       interiorCanvas.width = w - 2; interiorCanvas.height = h - 2;
-      interiorCanvas.getContext('2d')!.drawImage(canvas, 1, 1, w - 2, h - 2, 0, 0, w - 2, h - 2);
+      const iCtx_temp = interiorCanvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' })!;
+      iCtx_temp.imageSmoothingEnabled = false;
+      iCtx_temp.drawImage(canvas, 1, 1, w - 2, h - 2, 0, 0, w - 2, h - 2);
     } else {
       interiorCanvas.width = w; interiorCanvas.height = h;
-      interiorCanvas.getContext('2d')!.drawImage(canvas, 0, 0);
+      interiorCanvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' })!.drawImage(canvas, 0, 0);
     }
 
-    const iCtx = interiorCanvas.getContext('2d', { willReadFrequently: true })!;
+    const iCtx = interiorCanvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' })!;
     let iData = iCtx.getImageData(0, 0, interiorCanvas.width, interiorCanvas.height);
+    
     if (useStamp) {
       const stamped = await injectVirtualDataAsync(iData, code, p => setProgress(60 + p * 0.3));
       iCtx.putImageData(stamped, 0, 0); iData = stamped;
@@ -166,12 +187,15 @@ function App() {
     const pHash = generatePerceptualHashDetailed(iData);
     const iHash = await sha256(iData.data);
     const ts = Date.now();
+    
+    // 4. Generate Forensic Data
     const reportData: ReportData = {
       title: sharedFilename, version: versionData.current, timestamp: new Date(ts).toLocaleString(),
       deviceId: license?.deviceHash || 'UNKNOWN',
       results: [
         { label: 'Invisible Stamp', status: useStamp ? 'ENABLED' : 'DISABLED', detail: code },
-        { label: 'Visual DNA', status: 'GENERATED', detail: pHash.hash }
+        { label: 'Visual DNA', status: 'GENERATED', detail: pHash.hash },
+        { label: 'Physical Border', status: useBorder ? 'ENABLED' : 'DISABLED', detail: useBorder ? '1-pixel frame extracted' : 'N/A' }
       ],
       images: [{ label: 'Stamped Interior', url: interiorCanvas.toDataURL('image/png') }],
       forensics: [
@@ -182,10 +206,27 @@ function App() {
       ]
     };
     const pdfB64 = await getReportBase64(reportData);
-    const finalInteriorUrl = injectForensicMetadata(interiorCanvas.toDataURL('image/jpeg', 0.9), imageMeta?.rawExif, author, company, pdfB64);
+    
+    // 5. Inject Metadata and PDF into Interior (PNG format for forensic integrity)
+    const finalInteriorUrl = injectForensicPNGMetadata(interiorCanvas.toDataURL('image/png'), author, company, pdfB64);
 
-    await bundleEvidence(canvas.toDataURL('image/png'), null, finalInteriorUrl, { imageHash: iHash, perceptualHash: pHash.hash, timestamp: ts, combinedProof: await generateCombinedProof(iHash, 'AUTO') }, `${code}_${sharedFilename}`);
-    endProc(); alert("Bundle Saved!"); setMode('START');
+    // 6. Bundle all components
+    await bundleEvidence(
+      canvas.toDataURL('image/png'), 
+      borderCanvas ? borderCanvas.toDataURL('image/png') : null, 
+      finalInteriorUrl, 
+      { 
+        imageHash: iHash, 
+        perceptualHash: pHash.hash, 
+        timestamp: ts, 
+        author, 
+        company,
+        combinedProof: await generateCombinedProof(iHash, 'AUTO') 
+      }, 
+      `${code}_${sharedFilename}`
+    );
+
+    endProc(); alert("Forensic Bundle Saved!"); setMode('START');
   };
 
   const [manualJson, setManualJson] = useState('');
