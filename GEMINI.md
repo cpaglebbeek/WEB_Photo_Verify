@@ -43,3 +43,6 @@
   - **ROOD (Architectural):** Increment 1.0.0 (bijv. 1.1.0 -> 2.0.0)
 - **Codename Theme:** Quantum Leap (Facts)
 - **Uniqueness:** Elke build/oplevering MOET een unieke versie en een unieke thematische codenaam hebben.
+
+## Dashboard Update Mandate
+- **Ecosystem Visibility:** De `dashboard_info.html` in de Meta repository MOET bij elke build of versie-verhoging van elk project worden bijgewerkt met de meest actuele gegevens.
