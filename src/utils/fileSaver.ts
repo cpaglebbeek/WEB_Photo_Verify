@@ -10,7 +10,7 @@ interface NativeBridgePlugin {
 
 const NativeBridge = registerPlugin<NativeBridgePlugin>('NativeBridge');
 
-export const saveFile = async (dataUrl: string, filename: string, type: 'image' | 'deed', onProgress?: (p: number) => void) => {
+export const saveFile = async (dataUrl: string, filename: string, type: 'image' | 'deed' = 'image', onProgress?: (p: number) => void) => {
   // Simulate progress for saving
   if (onProgress) {
     onProgress(0);
@@ -27,22 +27,22 @@ export const saveFile = async (dataUrl: string, filename: string, type: 'image' 
     try {
       // 1. Write the file to the app's private CACHE directory first.
       const tempFile = await Filesystem.writeFile({
-        path: `temp_${Date.now()}_${fileName}`,
+        path: `temp_${Date.now()}_${filename}`,
         data: base64Data,
         directory: Directory.Cache
       });
 
       // 2. Try the Native Bridge to copy it to the SAF folder
       // If safUri is null, the bridge will attempt to use default Documents/_PhotoVerify
-      console.log(`[SAF] Requesting native copy for ${fileName}...`);
+      console.log(`[SAF] Requesting native copy for ${filename}...`);
       try {
         await NativeBridge.saveFileFromPath({
-          filename: fileName,
+          filename: filename,
           tempPath: tempFile.uri,
           mimeType: mimeType
         });
         
-        addToHistory({ filename: fileName, type, dataUrl: type === 'deed' ? dataUrl : undefined });
+        addToHistory({ filename: filename, type, dataUrl: type === 'deed' ? dataUrl : undefined });
         
         // Cleanup temp file
         await Filesystem.deleteFile({
@@ -66,16 +66,16 @@ export const saveFile = async (dataUrl: string, filename: string, type: 'image' 
     // Web implementation
     const link = document.createElement('a');
     link.href = dataUrl;
-    link.download = fileName;
+    link.download = filename;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    addToHistory({ filename: fileName, type, dataUrl: type === 'deed' ? dataUrl : undefined });
+    addToHistory({ filename: filename, type, dataUrl: type === 'deed' ? dataUrl : undefined });
   }
 };
 
-export const saveJsonFile = async (jsonObject: object, fileName: string) => {
+export const saveJsonFile = async (jsonObject: object, filename: string) => {
   const data = JSON.stringify(jsonObject, null, 2);
   const dataUrl = `data:application/json;base64,${btoa(data)}`;
-  await saveFile(dataUrl, fileName, 'deed');
+  await saveFile(dataUrl, filename, 'deed');
 };

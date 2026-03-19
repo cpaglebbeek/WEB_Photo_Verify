@@ -259,7 +259,7 @@ function App() {
     const pdfB64 = await getReportBase64(reportData);
     
     // 5. Inject Metadata and PDF into Interior (PNG format for forensic integrity)
-    const finalInteriorUrl = injectForensicPNGMetadata(interiorCanvas.toDataURL('image/png'), author, company, pdfB64);
+    const finalInteriorUrl = injectForensicMetadata(interiorCanvas.toDataURL('image/png'), imageMeta?.rawExif, author, company, pdfB64);
 
     // 6. Bundle all components
     try {

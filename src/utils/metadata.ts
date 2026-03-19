@@ -1,4 +1,5 @@
 import EXIF from 'exif-js';
+// @ts-ignore - no type declarations available for piexifjs
 import * as piexif from 'piexifjs';
 
 export interface ImageMetadata {

@@ -1,4 +1,3 @@
-import JSZip from 'jszip';
 import { saveFile } from './fileSaver';
 
 // Dynamically import the Web Worker for Vite/Webpack compatibility

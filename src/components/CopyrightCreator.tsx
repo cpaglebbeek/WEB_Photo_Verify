@@ -84,7 +84,7 @@ export default function CopyrightCreator({ image, filename, uid, setUid, onStart
     const testResult = await extractVirtualDataAsync(testData, () => {});
     
     if (testResult && testResult.uid === uid.toUpperCase()) {
-      await bundleEvidence(canvas.toDataURL('image/png'), borderCanvas.toDataURL('image/png'), interiorCanvas.toDataURL('image/png'), deed, `${uid}_${filename}`);
+      await bundleEvidence(canvas.toDataURL('image/png'), borderCanvas.toDataURL('image/png'), interiorCanvas.toDataURL('image/png'), deed, `${uid}_${filename}`, onProgress);
       setInjectedDataUrl(canvas.toDataURL('image/png'));
     } else {
       alert("Self-test failed. Try a higher quality image.");
