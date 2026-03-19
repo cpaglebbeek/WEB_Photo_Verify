@@ -1,6 +1,33 @@
 /**
- * Forensic Analysis Utility v8.7
+ * Forensic Analysis Utility v8.8
  */
+
+/**
+ * Extracts the 1px border ring as raw RGB bytes (no alpha) in a fixed,
+ * deterministic order: top row → bottom row → left edge → right edge.
+ * Used to compute a lossless border hash without PNG round-trips.
+ */
+export const extractBorderRingRGB = (imageData: ImageData): Uint8ClampedArray => {
+  const { data, width, height } = imageData;
+  const result: number[] = [];
+  for (let x = 0; x < width; x++) {
+    const i = x * 4;
+    result.push(data[i], data[i + 1], data[i + 2]);
+  }
+  for (let x = 0; x < width; x++) {
+    const i = ((height - 1) * width + x) * 4;
+    result.push(data[i], data[i + 1], data[i + 2]);
+  }
+  for (let y = 1; y < height - 1; y++) {
+    const i = y * width * 4;
+    result.push(data[i], data[i + 1], data[i + 2]);
+  }
+  for (let y = 1; y < height - 1; y++) {
+    const i = (y * width + width - 1) * 4;
+    result.push(data[i], data[i + 1], data[i + 2]);
+  }
+  return new Uint8ClampedArray(result);
+};
 
 export interface HistogramData {
   luminance: number[];

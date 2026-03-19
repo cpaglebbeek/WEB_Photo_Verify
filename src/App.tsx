@@ -10,6 +10,7 @@ import ZipVerifier from './components/ZipVerifier';
 import ProcessingOverlay from './components/ProcessingOverlay';
 import { injectVirtualDataAsync } from './utils/virtualStorage';
 import { sha256, generateCombinedProof } from './utils/timeAnchor';
+import { extractBorderRingRGB } from './utils/forensics';
 import { generatePerceptualHashDetailed } from './utils/perceptualHash';
 import { bundleEvidence } from './utils/zipper';
 import { getDeviceHash, checkLicense, applyManualLicense, testConnection, type LicenseStatus } from './utils/license';
@@ -150,6 +151,11 @@ function App() {
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(sharedImage, 0, 0);
 
+    // Compute border hash directly from source canvas — no PNG round-trip
+    const borderHashPromise = useBorder
+      ? sha256(extractBorderRingRGB(ctx.getImageData(0, 0, w, h)))
+      : Promise.resolve(undefined);
+
     let interiorCanvas = document.createElement('canvas');
     let borderCanvas = null;
 
@@ -226,14 +232,16 @@ function App() {
         canvas.toDataURL('image/png'), 
         borderCanvas ? borderCanvas.toDataURL('image/png') : null, 
         finalInteriorUrl, 
-        { 
-          imageHash: iHash, 
-          perceptualHash: pHash.hash, 
-          timestamp: ts, 
-          author, 
+        {
+          imageHash: iHash,
+          perceptualHash: pHash.hash,
+          timestamp: ts,
+          author,
           company,
-          combinedProof: await generateCombinedProof(iHash, 'AUTO') 
-        }, 
+          combinedProof: await generateCombinedProof(iHash, 'AUTO'),
+          borderHash: await borderHashPromise,
+          imageDimensions: useBorder ? { width: w, height: h } : undefined
+        },
         `${code}_${sharedFilename}`,
         p => setProgress(p) // Pass the setProgress function directly
       );

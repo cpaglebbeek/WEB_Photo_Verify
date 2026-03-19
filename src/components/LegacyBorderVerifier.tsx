@@ -1,7 +1,16 @@
 import { useState, useRef, type ChangeEvent } from 'react';
 import JSZip from 'jszip';
 import { generateForensicPDF, type ReportData } from '../utils/pdfGenerator';
+import { extractBorderRingRGB } from '../utils/forensics';
+import { sha256 } from '../utils/timeAnchor';
 import versionData from '../version.json';
+
+interface Deed {
+  borderHash?: string;
+  imageDimensions?: { width: number; height: number };
+  imageHash?: string;
+  timestamp?: number;
+}
 
 interface Props {
   deviceId: string;
@@ -29,6 +38,7 @@ export default function LegacyBorderVerifier({ deviceId, onStart, onProgress, on
   const [proof, setProof] = useState<HTMLImageElement | null>(null);
   const [cornerZoom, setCornerZoom] = useState<string | null>(null);
   const [zipStatus, setZipStatus] = useState<string | null>(null);
+  const [deed, setDeed] = useState<Deed | null>(null);
 
   const [fileInfos, setFileInfos] = useState<{
     original?: LoadedFileInfo;
@@ -53,6 +63,7 @@ export default function LegacyBorderVerifier({ deviceId, onStart, onProgress, on
       let nameOriginal = '';
       let nameBorder = '';
       let nameInterior = '';
+      let foundDeed: Deed | null = null;
 
       for (const [filename, zipEntry] of Object.entries(zip.files)) {
         if (zipEntry.dir) continue;
@@ -65,6 +76,8 @@ export default function LegacyBorderVerifier({ deviceId, onStart, onProgress, on
         } else if (filename.endsWith('_protected_interior.png')) {
           foundInterior = 'data:image/png;base64,' + await zipEntry.async('base64');
           nameInterior = filename;
+        } else if (filename.endsWith('_deed.json')) {
+          try { foundDeed = JSON.parse(await zipEntry.async('text')); } catch { /* skip */ }
         }
       }
 
@@ -87,12 +100,14 @@ export default function LegacyBorderVerifier({ deviceId, onStart, onProgress, on
       setOriginal(imgOriginal);
       setProof(imgBorder);
       setCropped(imgInterior);
+      setDeed(foundDeed);
       setFileInfos({
         original: { name: nameOriginal, url: foundOriginal! },
         proof: { name: nameBorder, url: foundBorder! },
         cropped: { name: nameInterior, url: foundInterior! },
       });
-      setZipStatus(`ZIP loaded — ${nameOriginal.split('_original')[0]}`);
+      const deedInfo = foundDeed?.borderHash ? ' · deed hash ✓' : ' · geen deed (oud ZIP)';
+      setZipStatus(`ZIP loaded — ${nameOriginal.split('_original')[0]}${deedInfo}`);
     } catch (err: any) {
       setZipStatus(`ZIP error: ${err.message}`);
     }
@@ -189,21 +204,33 @@ export default function LegacyBorderVerifier({ deviceId, onStart, onProgress, on
     const ctx = canvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' })!;
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Get original border ring data
+    // 1. Draw original — read full image data once
     ctx.drawImage(original, 0, 0);
-    const originalData = ctx.getImageData(0, 0, width, height).data;
+    const originalImageData = ctx.getImageData(0, 0, width, height);
+    const originalData = originalImageData.data;
     onProgress(30);
     await yieldToMain();
 
-    // 2. Reconstruct border ring from proof
+    // 2. Primary verdict: SHA-256 hash of border ring (no PNG round-trip)
+    let hashVerdict: { success: boolean; message: string } | null = null;
+    if (deed?.borderHash) {
+      const computedHash = await sha256(extractBorderRingRGB(originalImageData));
+      const match = computedHash === deed.borderHash;
+      hashVerdict = match
+        ? { success: true, message: `Border Hash Verified ✓ SHA-256 van de 1px ring komt exact overeen met deed.` }
+        : { success: false, message: `Border Hash MISMATCH ✗ SHA-256 verschilt van deed — border is gewijzigd of foto is vervangen.` };
+      onProgress(50);
+    }
+    await yieldToMain();
+
+    // 3. Visual diff map (context only — not used for verdict when deed is available)
     ctx.clearRect(0, 0, width, height);
-    ctx.drawImage(proof, 0, 0, width, height);         // force-scale to canvas size
-    ctx.drawImage(cropped, 1, 1, width - 2, height - 2); // force-scale interior
+    ctx.drawImage(proof, 0, 0, width, height);
+    ctx.drawImage(cropped, 1, 1, width - 2, height - 2);
     const reconstructedData = ctx.getImageData(0, 0, width, height).data;
     onProgress(60);
     await yieldToMain();
 
-    // 3. Compare only border ring pixels (interior is intentionally stamped)
     const diffCanvas = diffCanvasRef.current;
     let diffCtx = null;
     let diffImgData = null;
@@ -214,7 +241,7 @@ export default function LegacyBorderVerifier({ deviceId, onStart, onProgress, on
     }
 
     let errorCount = 0;
-    const TOLERANCE = 8;
+    const TOLERANCE = 4;
     const borderPixelCount = 2 * width + 2 * (height - 2);
 
     for (let i = 0; i < originalData.length; i += 4) {
@@ -251,10 +278,17 @@ export default function LegacyBorderVerifier({ deviceId, onStart, onProgress, on
 
     if (diffCtx && diffImgData) diffCtx.putImageData(diffImgData, 0, 0);
 
-    if (errorCount < (borderPixelCount * 0.01)) {
-      setVerificationResult({ success: true, message: `Border Verified! Physical 1px ring matches (${errorCount} noise pixels in ${borderPixelCount} border pixels).` });
+    // 4. Verdict: hash-based (primary) or pixel-based fallback for old ZIPs
+    if (hashVerdict) {
+      const visualNote = errorCount > 0 ? ` (visuele diff: ${errorCount}/${borderPixelCount} px)` : '';
+      setVerificationResult({ ...hashVerdict, message: hashVerdict.message + visualNote });
     } else {
-      setVerificationResult({ success: false, message: `Border Mismatch! ${errorCount} of ${borderPixelCount} border pixels differ. Border may have been tampered.` });
+      // Fallback: no deed — use pixel comparison only
+      if (errorCount < (borderPixelCount * 0.01)) {
+        setVerificationResult({ success: true, message: `Border OK (geen deed — visuele check: ${errorCount} afwijkende pixels van ${borderPixelCount}).` });
+      } else {
+        setVerificationResult({ success: false, message: `Border Mismatch (geen deed — ${errorCount} van ${borderPixelCount} pixels wijken af). Gebruik een nieuw ZIP voor hash-verificatie.` });
+      }
     }
 
     onProgress(100);
