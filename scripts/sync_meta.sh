@@ -6,6 +6,7 @@ META_DIR="../Meta_PhotoVerify"
 
 # Core bestanden die NOOIT lokaal gewijzigd mogen worden
 CORE_FILES=(
+  # Utilities (core logic)
   "src/utils/perceptualHash.ts"
   "src/utils/timeAnchor.ts"
   "src/utils/zipper.ts"
@@ -19,11 +20,23 @@ CORE_FILES=(
   "src/utils/metadata.ts"
   "src/utils/pdfGenerator.ts"
   "src/utils/fileSaver.ts"
+  # Components — Verifiers
   "src/components/ZipVerifier.tsx"
   "src/components/LegacyBorderVerifier.tsx"
   "src/components/CopyrightVerifier.tsx"
   "src/components/TimeAnchorVerifier.tsx"
   "src/components/ProcessingOverlay.tsx"
+  # Components — Creators
+  "src/components/CopyrightCreator.tsx"
+  "src/components/TimeAnchorCreator.tsx"
+  "src/components/LegacyBorderCreator.tsx"
+  "src/components/ImageLab.tsx"
+  # Workers
+  "src/workers/zip.worker.ts"
+  # App entry (SSOT for all screens: ABOUT, INFO, SETTINGS, etc.)
+  "src/App.tsx"
+  "src/App.css"
+  # Config & data
   "src/engine_version.json"
   "public/content-config.json"
   "public/ui-config.json"
