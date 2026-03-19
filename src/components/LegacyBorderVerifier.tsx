@@ -1,4 +1,5 @@
 import { useState, useRef, type ChangeEvent } from 'react';
+import JSZip from 'jszip';
 import { generateForensicPDF, type ReportData } from '../utils/pdfGenerator';
 import versionData from '../version.json';
 
@@ -14,12 +15,21 @@ interface LoadedFileInfo {
   url: string;
 }
 
+const loadImage = (url: string): Promise<HTMLImageElement> =>
+  new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = url;
+  });
+
 export default function LegacyBorderVerifier({ deviceId, onStart, onProgress, onEnd }: Props) {
   const [original, setOriginal] = useState<HTMLImageElement | null>(null);
   const [cropped, setCropped] = useState<HTMLImageElement | null>(null);
   const [proof, setProof] = useState<HTMLImageElement | null>(null);
   const [cornerZoom, setCornerZoom] = useState<string | null>(null);
-  
+  const [zipStatus, setZipStatus] = useState<string | null>(null);
+
   const [fileInfos, setFileInfos] = useState<{
     original?: LoadedFileInfo;
     cropped?: LoadedFileInfo;
@@ -28,6 +38,66 @@ export default function LegacyBorderVerifier({ deviceId, onStart, onProgress, on
 
   const [verificationResult, setVerificationResult] = useState<{ success: boolean, message: string } | null>(null);
   const diffCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  // --- ZIP import: auto-extract all 3 files by filename suffix ---
+  const handleZipImport = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setZipStatus('Reading ZIP...');
+    setVerificationResult(null);
+    try {
+      const zip = await JSZip.loadAsync(file);
+      let foundOriginal: string | null = null;
+      let foundBorder: string | null = null;
+      let foundInterior: string | null = null;
+      let nameOriginal = '';
+      let nameBorder = '';
+      let nameInterior = '';
+
+      for (const [filename, zipEntry] of Object.entries(zip.files)) {
+        if (zipEntry.dir) continue;
+        if (filename.endsWith('_original.png')) {
+          foundOriginal = 'data:image/png;base64,' + await zipEntry.async('base64');
+          nameOriginal = filename;
+        } else if (filename.endsWith('_1-pixel_border_proof.png')) {
+          foundBorder = 'data:image/png;base64,' + await zipEntry.async('base64');
+          nameBorder = filename;
+        } else if (filename.endsWith('_protected_interior.png')) {
+          foundInterior = 'data:image/png;base64,' + await zipEntry.async('base64');
+          nameInterior = filename;
+        }
+      }
+
+      const missing: string[] = [];
+      if (!foundOriginal) missing.push('original');
+      if (!foundBorder) missing.push('border proof');
+      if (!foundInterior) missing.push('protected interior');
+
+      if (missing.length > 0) {
+        setZipStatus(`ZIP incomplete — missing: ${missing.join(', ')}`);
+        return;
+      }
+
+      const [imgOriginal, imgBorder, imgInterior] = await Promise.all([
+        loadImage(foundOriginal!),
+        loadImage(foundBorder!),
+        loadImage(foundInterior!),
+      ]);
+
+      setOriginal(imgOriginal);
+      setProof(imgBorder);
+      setCropped(imgInterior);
+      setFileInfos({
+        original: { name: nameOriginal, url: foundOriginal! },
+        proof: { name: nameBorder, url: foundBorder! },
+        cropped: { name: nameInterior, url: foundInterior! },
+      });
+      setZipStatus(`ZIP loaded — ${nameOriginal.split('_original')[0]}`);
+    } catch (err: any) {
+      setZipStatus(`ZIP error: ${err.message}`);
+    }
+    e.target.value = '';
+  };
 
   const handleFileUpload = (type: 'original' | 'cropped' | 'proof', setter: (img: HTMLImageElement) => void) => (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -38,10 +108,7 @@ export default function LegacyBorderVerifier({ deviceId, onStart, onProgress, on
         const img = new Image();
         img.onload = () => {
           setter(img);
-          setFileInfos(prev => ({
-            ...prev,
-            [type]: { name: file.name, url }
-          }));
+          setFileInfos(prev => ({ ...prev, [type]: { name: file.name, url } }));
         };
         img.src = url;
       };
@@ -50,43 +117,31 @@ export default function LegacyBorderVerifier({ deviceId, onStart, onProgress, on
   };
 
   const generateMacroCorner = (interior: HTMLImageElement, border: HTMLImageElement): string => {
-    const zoomSize = 20; // 20x20 pixels
-    const displaySize = 200; // Display as 200x200
+    const zoomSize = 20;
+    const displaySize = 200;
     const canvas = document.createElement('canvas');
-    canvas.width = displaySize;
-    canvas.height = displaySize;
+    canvas.width = displaySize; canvas.height = displaySize;
     const ctx = canvas.getContext('2d')!;
-    ctx.imageSmoothingEnabled = false; // Essential for pixel-perfect zoom
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, displaySize, displaySize);
 
-    // Draw background
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, displaySize, displaySize);
-
-    // Create a temporary small canvas to reconstruct the corner at 1:1
     const temp = document.createElement('canvas');
-    temp.width = zoomSize;
-    temp.height = zoomSize;
+    temp.width = zoomSize; temp.height = zoomSize;
     const tCtx = temp.getContext('2d')!;
     tCtx.drawImage(interior, 1, 1);
     tCtx.drawImage(border, 0, 0);
 
-    // Scale up the corner to the display canvas
     ctx.drawImage(temp, 0, 0, zoomSize, zoomSize, 0, 0, displaySize, displaySize);
 
-    // Draw grid lines to emphasize pixels
-    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1;
     for (let i = 0; i <= displaySize; i += (displaySize / zoomSize)) {
       ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, displaySize); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(displaySize, i); ctx.stroke();
     }
 
-    // Highlight the 1-pixel border area
-    ctx.strokeStyle = '#10b981';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(0, 0, displaySize / zoomSize, displaySize); // Left edge
-    ctx.strokeRect(0, 0, displaySize, displaySize / zoomSize); // Top edge
-
+    ctx.strokeStyle = '#10b981'; ctx.lineWidth = 4;
+    ctx.strokeRect(0, 0, displaySize / zoomSize, displaySize);
+    ctx.strokeRect(0, 0, displaySize, displaySize / zoomSize);
     return canvas.toDataURL();
   };
 
@@ -96,7 +151,7 @@ export default function LegacyBorderVerifier({ deviceId, onStart, onProgress, on
       title: fileInfos.original?.name || 'Border Audit',
       version: versionData.current,
       timestamp: new Date().toLocaleString(),
-      deviceId: deviceId,
+      deviceId,
       results: [{ label: 'Physical Border', status: verificationResult.success ? 'SUCCESS' : 'ERROR', detail: verificationResult.message }],
       images: [
         { label: 'Original', url: fileInfos.original?.url || '' },
@@ -116,14 +171,13 @@ export default function LegacyBorderVerifier({ deviceId, onStart, onProgress, on
 
   const verify = async () => {
     if (!original || !cropped || !proof) {
-      setVerificationResult({ success: false, message: "Please upload all 3 files." });
+      setVerificationResult({ success: false, message: "Upload all 3 files or import a PhotoVerify ZIP." });
       return;
     }
 
     onStart();
     onProgress(10);
-    
-    // Generate Macro Zoom (interior=cropped, border=proof)
+
     const zoom = generateMacroCorner(cropped, proof);
     setCornerZoom(zoom);
 
@@ -135,26 +189,21 @@ export default function LegacyBorderVerifier({ deviceId, onStart, onProgress, on
     const ctx = canvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' })!;
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Get Clean Original Data
+    // 1. Get original border ring data
     ctx.drawImage(original, 0, 0);
     const originalData = ctx.getImageData(0, 0, width, height).data;
     onProgress(30);
     await yieldToMain();
 
-    // 2. Reconstruct from parts using SOLID overwrite (No alpha blending)
+    // 2. Reconstruct border ring from proof
     ctx.clearRect(0, 0, width, height);
-    
-    // First, draw the Border pixels (they are now on a solid background)
-    ctx.drawImage(proof, 0, 0);
-    
-    // Then, OVERWRITE the interior (this ensures the seam is 100% sharp)
-    ctx.drawImage(cropped, 1, 1);
-    
+    ctx.drawImage(proof, 0, 0, width, height);         // force-scale to canvas size
+    ctx.drawImage(cropped, 1, 1, width - 2, height - 2); // force-scale interior
     const reconstructedData = ctx.getImageData(0, 0, width, height).data;
     onProgress(60);
     await yieldToMain();
 
-    // 3. Compare with High Tolerance
+    // 3. Compare only border ring pixels (interior is intentionally stamped)
     const diffCanvas = diffCanvasRef.current;
     let diffCtx = null;
     let diffImgData = null;
@@ -166,7 +215,6 @@ export default function LegacyBorderVerifier({ deviceId, onStart, onProgress, on
 
     let errorCount = 0;
     const TOLERANCE = 8;
-    // Only compare the 1px border ring — interior is intentionally different (stamp applied)
     const borderPixelCount = 2 * width + 2 * (height - 2);
 
     for (let i = 0; i < originalData.length; i += 4) {
@@ -176,7 +224,6 @@ export default function LegacyBorderVerifier({ deviceId, onStart, onProgress, on
       const isBorderPixel = x === 0 || x === width - 1 || y === 0 || y === height - 1;
 
       if (!isBorderPixel) {
-        // Interior: show neutral in diff map, skip from comparison
         if (diffImgData) {
           diffImgData.data[i] = 0; diffImgData.data[i+1] = 80; diffImgData.data[i+2] = 80; diffImgData.data[i+3] = 40;
         }
@@ -186,9 +233,8 @@ export default function LegacyBorderVerifier({ deviceId, onStart, onProgress, on
       const rD = Math.abs(originalData[i] - reconstructedData[i]);
       const gD = Math.abs(originalData[i+1] - reconstructedData[i+1]);
       const bD = Math.abs(originalData[i+2] - reconstructedData[i+2]);
-      const isPixelMatch = rD <= TOLERANCE && gD <= TOLERANCE && bD <= TOLERANCE;
 
-      if (!isPixelMatch) {
+      if (rD > TOLERANCE || gD > TOLERANCE || bD > TOLERANCE) {
         errorCount++;
         if (diffImgData) {
           diffImgData.data[i] = 255; diffImgData.data[i+1] = 0; diffImgData.data[i+2] = 0; diffImgData.data[i+3] = 255;
@@ -210,54 +256,71 @@ export default function LegacyBorderVerifier({ deviceId, onStart, onProgress, on
     } else {
       setVerificationResult({ success: false, message: `Border Mismatch! ${errorCount} of ${borderPixelCount} border pixels differ. Border may have been tampered.` });
     }
-    
+
     onProgress(100);
     onEnd();
   };
 
+  const allLoaded = original && cropped && proof;
+
   return (
     <div className="component-container">
       <h2 style={{ color: '#10b981', marginBottom: '15px' }}>📐 Physical Border Audit</h2>
-      
-      <div className="upload-section" style={{ display: 'grid', gap: '10px', marginBottom: '15px' }}>
-        <label className="file-dropzone" style={{ padding: '0.8rem', border: '2px dashed #10b981', background: 'rgba(16, 185, 129, 0.05)', cursor: 'pointer', textAlign: 'center' }}>
+
+      {/* ZIP Import — primary method */}
+      <div style={{ marginBottom: '15px' }}>
+        <label style={{ display: 'block', padding: '1rem', border: '2px dashed #10b981', background: 'rgba(16,185,129,0.08)', borderRadius: '8px', cursor: 'pointer', textAlign: 'center' }}>
+          <input type="file" accept=".zip" onChange={handleZipImport} style={{ display: 'none' }} />
+          <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#10b981' }}>📦 IMPORT PHOTOVERIFY ZIP</div>
+          <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px' }}>Auto-detects original, border and interior</div>
+        </label>
+        {zipStatus && (
+          <div style={{ marginTop: '8px', padding: '8px 12px', borderRadius: '6px', fontSize: '0.8rem', background: allLoaded ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', color: allLoaded ? '#10b981' : '#ef4444', border: `1px solid ${allLoaded ? '#10b981' : '#ef4444'}` }}>
+            {allLoaded ? '✅ ' : '⚠️ '}{zipStatus}
+          </div>
+        )}
+      </div>
+
+      {/* Divider */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px', color: '#4b5563', fontSize: '0.75rem' }}>
+        <div style={{ flex: 1, height: '1px', background: '#374151' }} />
+        <span>or upload manually</span>
+        <div style={{ flex: 1, height: '1px', background: '#374151' }} />
+      </div>
+
+      {/* Manual upload — fallback */}
+      <div className="upload-section" style={{ display: 'grid', gap: '8px', marginBottom: '15px' }}>
+        <label className="file-dropzone" style={{ padding: '0.7rem', border: '1px dashed #374151', background: 'rgba(16,185,129,0.03)', cursor: 'pointer', textAlign: 'center' }}>
           <input type="file" accept="image/*" onChange={handleFileUpload('original', setOriginal)} style={{ display: 'none' }} />
-          <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#10b981' }}>{original ? '✅ ORIGINAL LOADED' : '1. ORIGINAL FILE'}</span>
+          <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: original ? '#10b981' : '#6b7280' }}>{original ? '✅ ORIGINAL LOADED' : '1. *_original.png'}</span>
         </label>
-        <label className="file-dropzone" style={{ padding: '0.8rem', border: '2px dashed #10b981', background: 'rgba(16, 185, 129, 0.05)', cursor: 'pointer', textAlign: 'center' }}>
-          <input type="file" accept="image/*" onChange={handleFileUpload('cropped', setCropped)} style={{ display: 'none' }} />
-          <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#10b981' }}>{cropped ? '✅ INTERIOR LOADED' : '2. CROPPED INTERIOR'}</span>
-        </label>
-        <label className="file-dropzone" style={{ padding: '0.8rem', border: '2px dashed #10b981', background: 'rgba(16, 185, 129, 0.05)', cursor: 'pointer', textAlign: 'center' }}>
+        <label className="file-dropzone" style={{ padding: '0.7rem', border: '1px dashed #374151', background: 'rgba(16,185,129,0.03)', cursor: 'pointer', textAlign: 'center' }}>
           <input type="file" accept="image/*" onChange={handleFileUpload('proof', setProof)} style={{ display: 'none' }} />
-          <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#10b981' }}>{proof ? '✅ BORDER LOADED' : '3. 1-PIXEL BORDER'}</span>
+          <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: proof ? '#10b981' : '#6b7280' }}>{proof ? '✅ BORDER LOADED' : '2. *_1-pixel_border_proof.png'}</span>
+        </label>
+        <label className="file-dropzone" style={{ padding: '0.7rem', border: '1px dashed #374151', background: 'rgba(16,185,129,0.03)', cursor: 'pointer', textAlign: 'center' }}>
+          <input type="file" accept="image/*" onChange={handleFileUpload('cropped', setCropped)} style={{ display: 'none' }} />
+          <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: cropped ? '#10b981' : '#6b7280' }}>{cropped ? '✅ INTERIOR LOADED' : '3. *_protected_interior.png'}</span>
         </label>
       </div>
 
-      {(original || cropped || proof) && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '20px', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px' }}>
-          <div style={{ textAlign: 'center', fontSize: '0.6rem' }}>
-            {fileInfos.original && <img src={fileInfos.original.url} style={{ width: '100%', height: '60px', objectFit: 'cover', borderRadius: '4px' }} />}
-            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '4px' }}>{fileInfos.original?.name || '...'}</div>
-            <strong>Original</strong>
-          </div>
-          <div style={{ textAlign: 'center', fontSize: '0.6rem' }}>
-            {fileInfos.cropped && <img src={fileInfos.cropped.url} style={{ width: '100%', height: '60px', objectFit: 'cover', borderRadius: '4px' }} />}
-            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '4px' }}>{fileInfos.cropped?.name || '...'}</div>
-            <strong>Interior</strong>
-          </div>
-          <div style={{ textAlign: 'center', fontSize: '0.6rem' }}>
-            {fileInfos.proof && <img src={fileInfos.proof.url} style={{ width: '100%', height: '60px', objectFit: 'cover', borderRadius: '4px' }} />}
-            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '4px' }}>{fileInfos.proof?.name || '...'}</div>
-            <strong>Border</strong>
-          </div>
+      {/* Preview thumbnails */}
+      {allLoaded && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '15px', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px' }}>
+          {(['original', 'proof', 'cropped'] as const).map((key) => (
+            <div key={key} style={{ textAlign: 'center', fontSize: '0.6rem' }}>
+              {fileInfos[key] && <img src={fileInfos[key]!.url} style={{ width: '100%', height: '60px', objectFit: 'cover', borderRadius: '4px' }} />}
+              <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '4px', color: '#9ca3af' }}>{fileInfos[key]?.name || '...'}</div>
+              <strong style={{ color: '#10b981' }}>{key === 'proof' ? 'Border' : key === 'cropped' ? 'Interior' : 'Original'}</strong>
+            </div>
+          ))}
         </div>
       )}
-      
-      <button onClick={verify} className="btn btn-primary" style={{ width: '100%', padding: '15px', fontSize: '1.1rem', background: '#10b981', borderColor: '#10b981' }}>
-        VERIFY PHYSICAL COMBINATION
+
+      <button onClick={verify} className="btn btn-primary" disabled={!allLoaded} style={{ width: '100%', padding: '15px', fontSize: '1.1rem', background: allLoaded ? '#10b981' : '#374151', borderColor: allLoaded ? '#10b981' : '#374151', cursor: allLoaded ? 'pointer' : 'not-allowed' }}>
+        VERIFY PHYSICAL BORDER
       </button>
-      
+
       {verificationResult && (
         <div className={`results ${verificationResult.success ? 'success' : 'error'}`} style={{ textAlign: 'left' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -265,14 +328,14 @@ export default function LegacyBorderVerifier({ deviceId, onStart, onProgress, on
             <button className="btn btn-primary" onClick={handleExportPDF} style={{ padding: '5px 15px', fontSize: '0.8rem', background: '#ef4444', border: 'none' }}>📄 PDF REPORT</button>
           </div>
           <p>{verificationResult.message}</p>
-          
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '15px' }}>
             <div>
               <span style={{ fontSize: '0.7em', color: '#888', display: 'block', marginBottom: '5px' }}>Macro Corner Zoom (Top-Left)</span>
               {cornerZoom && <img src={cornerZoom} style={{ width: '100%', border: '2px solid #10b981', borderRadius: '4px' }} />}
             </div>
             <div>
-              <span style={{ fontSize: '0.7em', color: '#888', display: 'block', marginBottom: '5px' }}>Geometric Error Map</span>
+              <span style={{ fontSize: '0.7em', color: '#888', display: 'block', marginBottom: '5px' }}>Border Ring Error Map</span>
               <canvas ref={diffCanvasRef} style={{ width: '100%', display: 'block', border: '1px solid #333', borderRadius: '4px' }} />
             </div>
           </div>
