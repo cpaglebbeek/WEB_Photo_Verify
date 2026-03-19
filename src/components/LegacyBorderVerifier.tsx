@@ -123,8 +123,8 @@ export default function LegacyBorderVerifier({ deviceId, onStart, onProgress, on
     onStart();
     onProgress(10);
     
-    // Generate Macro Zoom
-    const zoom = generateMacroCorner(original, cropped);
+    // Generate Macro Zoom (interior=cropped, border=proof)
+    const zoom = generateMacroCorner(cropped, proof);
     setCornerZoom(zoom);
 
     const width = original.width;
@@ -164,25 +164,37 @@ export default function LegacyBorderVerifier({ deviceId, onStart, onProgress, on
       diffImgData = diffCtx.createImageData(width, height);
     }
 
-    let match = true;
     let errorCount = 0;
     const TOLERANCE = 8;
+    // Only compare the 1px border ring — interior is intentionally different (stamp applied)
+    const borderPixelCount = 2 * width + 2 * (height - 2);
 
     for (let i = 0; i < originalData.length; i += 4) {
+      const pixelIndex = i / 4;
+      const x = pixelIndex % width;
+      const y = Math.floor(pixelIndex / width);
+      const isBorderPixel = x === 0 || x === width - 1 || y === 0 || y === height - 1;
+
+      if (!isBorderPixel) {
+        // Interior: show neutral in diff map, skip from comparison
+        if (diffImgData) {
+          diffImgData.data[i] = 0; diffImgData.data[i+1] = 80; diffImgData.data[i+2] = 80; diffImgData.data[i+3] = 40;
+        }
+        continue;
+      }
+
       const rD = Math.abs(originalData[i] - reconstructedData[i]);
       const gD = Math.abs(originalData[i+1] - reconstructedData[i+1]);
       const bD = Math.abs(originalData[i+2] - reconstructedData[i+2]);
-
       const isPixelMatch = rD <= TOLERANCE && gD <= TOLERANCE && bD <= TOLERANCE;
 
       if (!isPixelMatch) {
-        match = false;
         errorCount++;
         if (diffImgData) {
           diffImgData.data[i] = 255; diffImgData.data[i+1] = 0; diffImgData.data[i+2] = 0; diffImgData.data[i+3] = 255;
         }
       } else if (diffImgData) {
-        diffImgData.data[i] = 0; diffImgData.data[i+1] = 255; diffImgData.data[i+2] = 0; diffImgData.data[i+3] = 100;
+        diffImgData.data[i] = 0; diffImgData.data[i+1] = 255; diffImgData.data[i+2] = 0; diffImgData.data[i+3] = 200;
       }
 
       if (i % 40000 === 0) {
@@ -193,10 +205,10 @@ export default function LegacyBorderVerifier({ deviceId, onStart, onProgress, on
 
     if (diffCtx && diffImgData) diffCtx.putImageData(diffImgData, 0, 0);
 
-    if (match || errorCount < (width * height * 0.001)) { 
-      setVerificationResult({ success: true, message: `Verification Successful! Geometric match confirmed (${errorCount} tiny noise pixels ignored).` });
+    if (errorCount < (borderPixelCount * 0.01)) {
+      setVerificationResult({ success: true, message: `Border Verified! Physical 1px ring matches (${errorCount} noise pixels in ${borderPixelCount} border pixels).` });
     } else {
-      setVerificationResult({ success: false, message: `Verification Failed! ${errorCount} pixels do not match. See the red error map below.` });
+      setVerificationResult({ success: false, message: `Border Mismatch! ${errorCount} of ${borderPixelCount} border pixels differ. Border may have been tampered.` });
     }
     
     onProgress(100);
