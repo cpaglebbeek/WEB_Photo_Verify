@@ -8,6 +8,7 @@ export interface LicenseStatus {
   deviceHash: string;
   lastCheck: number;
   lastUsed?: number;
+  graceStart?: number;
   message?: string;
   name?: string;
   company?: string;
@@ -46,11 +47,11 @@ export const getDeviceHash = async (): Promise<string> => {
 };
 
 /**
- * Checks server for license validity. 
+ * Checks server for license validity.
  */
 export const checkLicense = async (
-  hash: string, 
-  serverUrl: string, 
+  hash: string,
+  serverUrl: string,
   forceSync = false,
   onLog?: (msg: string) => void
 ): Promise<LicenseStatus> => {
@@ -59,7 +60,23 @@ export const checkLicense = async (
   const now = Date.now();
   const GRACE_PERIOD = 24 * 60 * 60 * 1000;
 
-  if (!forceSync && localState && localState.deviceHash === hash && localState.active && (localState.expiry > now || localState.expiry > 4000000000000)) {
+  // If already in an active grace period, return it without hitting the server (unless forced)
+  if (!forceSync && localState && localState.deviceHash === hash && localState.graceStart) {
+    const graceRemaining = GRACE_PERIOD - (now - localState.graceStart);
+    if (graceRemaining > 0) {
+      const hours = Math.floor(graceRemaining / (60 * 60 * 1000));
+      onLog?.(`[License] Grace period active — ${hours}h remaining`);
+      return { ...localState, active: true, isGracePeriod: true, message: `Grace Period — ${hours}h remaining` };
+    } else {
+      // Grace period expired — clear it and fall through to server check
+      const expired = { ...localState, graceStart: undefined, active: false };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(expired));
+      onLog?.(`[License] Grace period expired`);
+    }
+  }
+
+  // Normal cached license check (no grace period active)
+  if (!forceSync && localState && localState.deviceHash === hash && localState.active && !localState.graceStart && (localState.expiry > now || localState.expiry > 4000000000000)) {
     if (now - localState.lastCheck < GRACE_PERIOD) {
       const refreshed = { ...localState, lastUsed: now };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(refreshed));
@@ -69,7 +86,7 @@ export const checkLicense = async (
 
   const fetchUrl = `${sanitizedServerUrl}/licenses/${hash}.json`;
   onLog?.(`[License] Syncing: GET ${fetchUrl}`);
-  
+
   try {
     let serverData;
     if (Capacitor.isNativePlatform()) {
@@ -81,13 +98,14 @@ export const checkLicense = async (
       if (!res.ok) throw new Error(`Status ${res.status}`);
       serverData = await res.json();
     }
-    
+
     onLog?.(`[License] Success: ${JSON.stringify(serverData)}`);
     const newState: LicenseStatus = {
       active: serverData.active && (serverData.expiry > now || serverData.expiry > 4000000000000),
       expiry: serverData.expiry,
       deviceHash: hash,
       lastCheck: now,
+      // graceStart intentionally omitted — clears any existing grace period on success
       message: serverData.message || "License Verified",
       name: serverData.name,
       company: serverData.company,
@@ -97,11 +115,35 @@ export const checkLicense = async (
     return newState;
   } catch (err: any) {
     onLog?.(`[License] Sync failed: ${err.message}`);
-    const lastValid = localState?.lastUsed ?? localState?.lastCheck ?? 0;
-    if (localState && localState.deviceHash === hash && localState.active && now - lastValid < GRACE_PERIOD) {
-      return { ...localState, isGracePeriod: true, message: "Offline Mode (Grace Period)" };
+
+    // File not found (404) or unreachable — start or continue grace period
+    const existingGrace = localState?.graceStart;
+    if (existingGrace) {
+      // Grace already running — check if still valid
+      const graceRemaining = GRACE_PERIOD - (now - existingGrace);
+      if (graceRemaining > 0) {
+        const hours = Math.floor(graceRemaining / (60 * 60 * 1000));
+        return { ...(localState as LicenseStatus), active: true, isGracePeriod: true, message: `Grace Period — ${hours}h remaining` };
+      }
+      // Grace expired
+      const expired = { ...(localState as LicenseStatus), graceStart: undefined, active: false, message: 'Grace Period Expired' };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(expired));
+      return { ...expired, isGracePeriod: false };
     }
-    return { active: false, expiry: 0, deviceHash: hash, lastCheck: 0, message: `Activation Error: ${err.message}` };
+
+    // No grace period yet — start it now (file was just removed)
+    const graceState: LicenseStatus = {
+      ...(localState ?? { expiry: 0, name: undefined, company: undefined, customerId: undefined }),
+      active: true,
+      deviceHash: hash,
+      lastCheck: localState?.lastCheck ?? now,
+      graceStart: now,
+      isGracePeriod: true,
+      message: 'Grace Period Started — 24h remaining'
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(graceState));
+    onLog?.(`[License] Grace period started`);
+    return graceState;
   }
 };
 
