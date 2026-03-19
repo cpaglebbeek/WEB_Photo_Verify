@@ -250,6 +250,7 @@ function App() {
 
   const [manualJson, setManualJson] = useState('');
   const [showManual, setShowManual] = useState(false);
+  const [showDeepDive, setShowDeepDive] = useState(false);
 
   const manualSync = () => { setDebugLogs([]); startup(true); };
 
@@ -409,6 +410,52 @@ function App() {
             </ul>
             <h3 className="mt-1" style={{ fontSize: '1rem', color: '#fbbf24' }}>2. Sovereignty First</h3>
             <p style={{ fontSize: '0.9rem' }}>Unlike cloud-based competitors, PhotoVerify runs <strong>100% locally</strong> in your browser or on your device. Your sensitive original photos never leave your machine.</p>
+
+            <button className="btn btn-secondary mt-1" onClick={() => setShowDeepDive(v => !v)} style={{ width: '100%', border: '1px solid #60a5fa', color: '#60a5fa', fontSize: '0.9rem' }}>
+              {showDeepDive ? '▲ Hide Deep Dive' : '🔬 Deep Dive: Scientific & Technical Foundation'}
+            </button>
+
+            {showDeepDive && (
+              <div style={{ marginTop: '15px', borderTop: '1px solid #334155', paddingTop: '15px' }}>
+                <h3 style={{ fontSize: '1rem', color: '#fbbf24', marginBottom: '10px' }}>🔬 Technical Architecture</h3>
+
+                <div style={{ background: 'rgba(96,165,250,0.07)', border: '1px solid #1e3a5f', borderRadius: '10px', padding: '12px', marginBottom: '10px' }}>
+                  <h4 style={{ color: '#60a5fa', margin: '0 0 6px 0' }}>🛡️ Layer 1 — Invisible Stamp (LSB+)</h4>
+                  <p style={{ fontSize: '0.8rem', margin: '0 0 4px 0', color: '#94a3b8' }}><strong style={{ color: '#cbd5e1' }}>Functional:</strong> Hides a unique 6-digit code directly in the pixel luminance.</p>
+                  <p style={{ fontSize: '0.8rem', margin: '0 0 4px 0', color: '#94a3b8' }}><strong style={{ color: '#cbd5e1' }}>Technical:</strong> 4-bit differential encoding in the blue channels of the interior pixels. Stable against re-saves.</p>
+                  <p style={{ fontSize: '0.8rem', margin: 0, color: '#94a3b8' }}><strong style={{ color: '#cbd5e1' }}>Logic:</strong> Auto-generated 6-char hex code based on (Date.now() XOR Math.random()). Fresh per shield session unless a hard default is set.</p>
+                </div>
+
+                <div style={{ background: 'rgba(96,165,250,0.07)', border: '1px solid #1e3a5f', borderRadius: '10px', padding: '12px', marginBottom: '10px' }}>
+                  <h4 style={{ color: '#60a5fa', margin: '0 0 6px 0' }}>🔍 Layer 2 — Visual DNA (pHash)</h4>
+                  <p style={{ fontSize: '0.8rem', margin: '0 0 4px 0', color: '#94a3b8' }}><strong style={{ color: '#cbd5e1' }}>Functional:</strong> Identifies the "concept" of the photo, regardless of minor changes.</p>
+                  <p style={{ fontSize: '0.8rem', margin: '0 0 4px 0', color: '#94a3b8' }}><strong style={{ color: '#cbd5e1' }}>Technical:</strong> DCT-based Perceptual Hashing (16×16 grid = 256 bits). Comparison via Hamming Distance.</p>
+                  <p style={{ fontSize: '0.8rem', margin: 0, color: '#94a3b8' }}><strong style={{ color: '#cbd5e1' }}>Logic:</strong> Calculated on the cropped interior to ensure consistency with the stamped data.</p>
+                </div>
+
+                <div style={{ background: 'rgba(96,165,250,0.07)', border: '1px solid #1e3a5f', borderRadius: '10px', padding: '12px', marginBottom: '10px' }}>
+                  <h4 style={{ color: '#60a5fa', margin: '0 0 6px 0' }}>📐 Layer 3 — Physical Border</h4>
+                  <p style={{ fontSize: '0.8rem', margin: '0 0 4px 0', color: '#94a3b8' }}><strong style={{ color: '#cbd5e1' }}>Functional:</strong> A 1-pixel frame extracted as a unique "puzzle piece" tied to the original dimensions.</p>
+                  <p style={{ fontSize: '0.8rem', margin: '0 0 4px 0', color: '#94a3b8' }}><strong style={{ color: '#cbd5e1' }}>Technical:</strong> Pixel-perfect extraction from top/bottom/left/right edges onto a solid-background canvas — no alpha pre-multiplication artifacts.</p>
+                  <p style={{ fontSize: '0.8rem', margin: 0, color: '#94a3b8' }}><strong style={{ color: '#cbd5e1' }}>Logic:</strong> Verification requires the owner to provide the exact original file with matching dimensions.</p>
+                </div>
+
+                <div style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid #064e3b', borderRadius: '10px', padding: '12px', marginBottom: '10px' }}>
+                  <h4 style={{ color: '#10b981', margin: '0 0 6px 0' }}>📜 Layer 4 — Time-Anchor</h4>
+                  <p style={{ fontSize: '0.8rem', margin: '0 0 4px 0', color: '#94a3b8' }}><strong style={{ color: '#cbd5e1' }}>Functional:</strong> Links the image hash to a public "Anchor" block hash, proving the photo existed at a specific point in time.</p>
+                  <p style={{ fontSize: '0.8rem', margin: '0 0 4px 0', color: '#94a3b8' }}><strong style={{ color: '#cbd5e1' }}>Technical:</strong> SHA-256 of the image data is combined with a fetched public anchor hash (blockchain or public timestamping service).</p>
+                  <p style={{ fontSize: '0.8rem', margin: 0, color: '#94a3b8' }}><strong style={{ color: '#cbd5e1' }}>Logic:</strong> Combined proof = SHA-256(imageHash + anchorHash). This creates a court-admissible temporal record.</p>
+                </div>
+
+                <div style={{ background: 'rgba(251,191,36,0.07)', border: '1px solid #78350f', borderRadius: '10px', padding: '12px' }}>
+                  <h4 style={{ color: '#fbbf24', margin: '0 0 6px 0' }}>🗜️ Evidence Bundle (ZIP)</h4>
+                  <p style={{ fontSize: '0.8rem', margin: '0 0 4px 0', color: '#94a3b8' }}><strong style={{ color: '#cbd5e1' }}>Functional:</strong> All forensic layers bundled into a single tamper-evident ZIP archive.</p>
+                  <p style={{ fontSize: '0.8rem', margin: '0 0 4px 0', color: '#94a3b8' }}><strong style={{ color: '#cbd5e1' }}>Contains:</strong> Original image, stamped interior, border frame, forensic deed JSON, HTML report, PDF certificate.</p>
+                  <p style={{ fontSize: '0.8rem', margin: 0, color: '#94a3b8' }}><strong style={{ color: '#cbd5e1' }}>Logic:</strong> Processed entirely in-browser via Web Workers. No data leaves the device.</p>
+                </div>
+              </div>
+            )}
+
             <button className="btn btn-primary mt-1" onClick={() => setMode('START')}>Got it!</button>
           </div>
         )}
