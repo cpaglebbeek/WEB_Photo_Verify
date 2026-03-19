@@ -488,6 +488,17 @@ function App() {
               }}>💾 SAVE / COMMIT</button>
             </div>
             <div style={{ marginTop: '20px', borderTop: '1px solid #334155', paddingTop: '15px' }}>
+              <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '8px' }}>🌐 Interface Language</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '15px' }}>
+                <button className="btn btn-secondary" style={{ fontSize: '0.85rem' }} onClick={() => {
+                  document.cookie = 'googtrans=/en/en; path=/';
+                  window.location.reload();
+                }}>🇬🇧 English</button>
+                <button className="btn btn-secondary" style={{ fontSize: '0.85rem' }} onClick={() => {
+                  document.cookie = 'googtrans=/en/nl; path=/';
+                  window.location.reload();
+                }}>🇳🇱 Nederlands</button>
+              </div>
               <button className="btn btn-secondary" onClick={() => {
                 localStorage.removeItem('saf_folder_uri');
                 alert("Storage folder reset to Internal Documents.");
