@@ -184,57 +184,16 @@ function App() {
       iCtx.putImageData(stamped, 0, 0); iData = stamped;
     }
 
-    // Offload heavy hashing to Web Worker
-    setProcessingMsg("Calculating Forensic Hashes...");
-    setProgress(20); // Start hashing phase from 20%
-    // Create a Blob from the worker code and create an object URL
-    const hashWorkerBlob = new Blob([`
-      import { generatePerceptualHashDetailed } from '../utils/perceptualHash';
-      import { sha256 } from '../utils/timeAnchor';
+    // Compute hashes on main thread (canvas API not available in workers)
+    setProcessingMsg("Calculating Forensic Hashes: perceptual hash...");
+    setProgress(20);
+    const pHash = generatePerceptualHashDetailed(iData);
 
-      self.onmessage = async (event) => {
-        const { imageDataBuffer, width, height } = event.data;
-        try {
-          // Reconstruct ImageData object from buffer
-          const uint8Array = new Uint8ClampedArray(imageDataBuffer);
-          const imgData = new ImageData(uint8Array, width, height);
+    setProcessingMsg("Calculating Forensic Hashes: sha256...");
+    setProgress(40);
+    const iHash = await sha256(iData.data);
 
-          // Perceptual Hash
-          self.postMessage({ type: 'progress', percent: 10, task: 'perceptual_hash' });
-          const pHash = generatePerceptualHashDetailed(imgData);
-
-          // SHA-256 Hash
-          self.postMessage({ type: 'progress', percent: 60, task: 'sha256_hash' });
-          const iHash = await sha256(imgData.data);
-
-          self.postMessage({ type: 'complete', pHash, iHash });
-        } catch (error) {
-          self.postMessage({ type: 'error', message: error.message || 'Unknown error during hashing' });
-        }
-      };
-    `], { type: 'application/javascript' });
-    const hashWorker = new Worker(URL.createObjectURL(hashWorkerBlob), { type: 'module' });
-    
-    // Transfer the ImageData buffer to the worker (efficiently)
-    const { pHash, iHash } = await new Promise<{ pHash: any, iHash: string }>((resolve, reject) => {
-      hashWorker.onmessage = (event: MessageEvent) => {
-        const { type, percent, task, pHash, iHash, message } = event.data;
-        if (type === 'progress') {
-          // Scale hash worker progress (0-100) to overall progress (20-60)
-          setProgress(Math.floor(20 + (percent * 0.4)));
-          setProcessingMsg(`Calculating Hashes: ${task.replace('_', ' ')}...`);
-        } else if (type === 'complete') {
-          resolve({ pHash, iHash });
-          hashWorker.terminate();
-        } else if (type === 'error') {
-          reject(new Error(`Hash Worker error: ${message}`));
-          hashWorker.terminate();
-        }
-      };
-      // Transfer the ImageData buffer to the worker (efficiently)
-      // We send the buffer and reconstruct ImageData in the worker to avoid a DOM object in worker context
-      hashWorker.postMessage({ imageDataBuffer: iData.data.buffer, width: iData.width, height: iData.height }, [iData.data.buffer]);
-    });
+    setProgress(60);
     
     const ts = Date.now();
 
