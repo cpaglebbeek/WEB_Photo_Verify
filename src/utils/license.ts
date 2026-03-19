@@ -149,11 +149,13 @@ export const checkLicense = async (
 
 export const applyManualLicense = (data: any, hash: string): LicenseStatus => {
   const now = Date.now();
+  const existingState: LicenseStatus | null = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
   const newState: LicenseStatus = {
     active: data.active && (data.expiry > now || data.expiry > 4000000000000),
     expiry: data.expiry,
     deviceHash: hash,
     lastCheck: now,
+    graceStart: existingState?.graceStart, // preserve active grace period
     message: (data.message || "Manual Activation") + " (OFFLINE)",
     name: data.name,
     company: data.company,
