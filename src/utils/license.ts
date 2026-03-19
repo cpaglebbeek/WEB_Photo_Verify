@@ -60,21 +60,6 @@ export const checkLicense = async (
   const now = Date.now();
   const GRACE_PERIOD = 24 * 60 * 60 * 1000;
 
-  // If already in an active grace period, return it without hitting the server (unless forced)
-  if (!forceSync && localState && localState.deviceHash === hash && localState.graceStart) {
-    const graceRemaining = GRACE_PERIOD - (now - localState.graceStart);
-    if (graceRemaining > 0) {
-      const hours = Math.floor(graceRemaining / (60 * 60 * 1000));
-      onLog?.(`[License] Grace period active — ${hours}h remaining`);
-      return { ...localState, active: true, isGracePeriod: true, message: `Grace Period — ${hours}h remaining` };
-    } else {
-      // Grace period expired — clear it and fall through to server check
-      const expired = { ...localState, graceStart: undefined, active: false };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(expired));
-      onLog?.(`[License] Grace period expired`);
-    }
-  }
-
   const fetchUrl = `${sanitizedServerUrl}/licenses/${hash}.json`;
   onLog?.(`[License] Syncing: GET ${fetchUrl}`);
 
