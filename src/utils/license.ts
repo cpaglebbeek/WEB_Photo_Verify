@@ -75,15 +75,6 @@ export const checkLicense = async (
     }
   }
 
-  // Normal cached license check (no grace period active)
-  if (!forceSync && localState && localState.deviceHash === hash && localState.active && !localState.graceStart && (localState.expiry > now || localState.expiry > 4000000000000)) {
-    if (now - localState.lastCheck < GRACE_PERIOD) {
-      const refreshed = { ...localState, lastUsed: now };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(refreshed));
-      return { ...refreshed, message: refreshed.message || "License Active (Offline)" };
-    }
-  }
-
   const fetchUrl = `${sanitizedServerUrl}/licenses/${hash}.json`;
   onLog?.(`[License] Syncing: GET ${fetchUrl}`);
 
