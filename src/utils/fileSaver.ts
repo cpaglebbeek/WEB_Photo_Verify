@@ -10,7 +10,16 @@ interface NativeBridgePlugin {
 
 const NativeBridge = registerPlugin<NativeBridgePlugin>('NativeBridge');
 
-export const saveFile = async (dataUrl: string, fileName: string, type: 'image' | 'deed' = 'image') => {
+export const saveFile = async (dataUrl: string, filename: string, type: 'image' | 'deed', onProgress?: (p: number) => void) => {
+  // Simulate progress for saving
+  if (onProgress) {
+    onProgress(0);
+    await new Promise(resolve => setTimeout(resolve, 50));
+    onProgress(50);
+    await new Promise(resolve => setTimeout(resolve, 50));
+    onProgress(100);
+  }
+
   if (Capacitor.isNativePlatform()) {
     const base64Data = dataUrl.split(',')[1];
     const mimeType = type === 'image' ? 'image/png' : 'application/zip';

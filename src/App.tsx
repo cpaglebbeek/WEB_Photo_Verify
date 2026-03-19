@@ -184,9 +184,60 @@ function App() {
       iCtx.putImageData(stamped, 0, 0); iData = stamped;
     }
 
-    const pHash = generatePerceptualHashDetailed(iData);
-    const iHash = await sha256(iData.data);
+    // Offload heavy hashing to Web Worker
+    setProcessingMsg("Calculating Forensic Hashes...");
+    setProgress(20); // Start hashing phase from 20%
+    // Create a Blob from the worker code and create an object URL
+    const hashWorkerBlob = new Blob([`
+      import { generatePerceptualHashDetailed } from '../utils/perceptualHash';
+      import { sha256 } from '../utils/timeAnchor';
+
+      self.onmessage = async (event) => {
+        const { imageDataBuffer, width, height } = event.data;
+        try {
+          // Reconstruct ImageData object from buffer
+          const uint8Array = new Uint8ClampedArray(imageDataBuffer);
+          const imgData = new ImageData(uint8Array, width, height);
+
+          // Perceptual Hash
+          self.postMessage({ type: 'progress', percent: 10, task: 'perceptual_hash' });
+          const pHash = generatePerceptualHashDetailed(imgData);
+
+          // SHA-256 Hash
+          self.postMessage({ type: 'progress', percent: 60, task: 'sha256_hash' });
+          const iHash = await sha256(imgData.data);
+
+          self.postMessage({ type: 'complete', pHash, iHash });
+        } catch (error) {
+          self.postMessage({ type: 'error', message: error.message || 'Unknown error during hashing' });
+        }
+      };
+    `], { type: 'application/javascript' });
+    const hashWorker = new Worker(URL.createObjectURL(hashWorkerBlob), { type: 'module' });
+    
+    // Transfer the ImageData buffer to the worker (efficiently)
+    const { pHash, iHash } = await new Promise<{ pHash: any, iHash: string }>((resolve, reject) => {
+      hashWorker.onmessage = (event: MessageEvent) => {
+        const { type, percent, task, pHash, iHash, message } = event.data;
+        if (type === 'progress') {
+          // Scale hash worker progress (0-100) to overall progress (20-60)
+          setProgress(Math.floor(20 + (percent * 0.4)));
+          setProcessingMsg(`Calculating Hashes: ${task.replace('_', ' ')}...`);
+        } else if (type === 'complete') {
+          resolve({ pHash, iHash });
+          hashWorker.terminate();
+        } else if (type === 'error') {
+          reject(new Error(`Hash Worker error: ${message}`));
+          hashWorker.terminate();
+        }
+      };
+      // Transfer the ImageData buffer to the worker (efficiently)
+      // We send the buffer and reconstruct ImageData in the worker to avoid a DOM object in worker context
+      hashWorker.postMessage({ imageDataBuffer: iData.data.buffer, width: iData.width, height: iData.height }, [iData.data.buffer]);
+    });
+    
     const ts = Date.now();
+
     
     // 4. Generate Forensic Data
     const reportData: ReportData = {
@@ -211,22 +262,31 @@ function App() {
     const finalInteriorUrl = injectForensicPNGMetadata(interiorCanvas.toDataURL('image/png'), author, company, pdfB64);
 
     // 6. Bundle all components
-    await bundleEvidence(
-      canvas.toDataURL('image/png'), 
-      borderCanvas ? borderCanvas.toDataURL('image/png') : null, 
-      finalInteriorUrl, 
-      { 
-        imageHash: iHash, 
-        perceptualHash: pHash.hash, 
-        timestamp: ts, 
-        author, 
-        company,
-        combinedProof: await generateCombinedProof(iHash, 'AUTO') 
-      }, 
-      `${code}_${sharedFilename}`
-    );
-
-    endProc(); alert("Forensic Bundle Saved!"); setMode('START');
+    try {
+      await bundleEvidence(
+        canvas.toDataURL('image/png'), 
+        borderCanvas ? borderCanvas.toDataURL('image/png') : null, 
+        finalInteriorUrl, 
+        { 
+          imageHash: iHash, 
+          perceptualHash: pHash.hash, 
+          timestamp: ts, 
+          author, 
+          company,
+          combinedProof: await generateCombinedProof(iHash, 'AUTO') 
+        }, 
+        `${code}_${sharedFilename}`,
+        p => setProgress(p) // Pass the setProgress function directly
+      );
+      endProc(); 
+      alert("Forensic Bundle Saved!"); 
+      setMode('START');
+    } catch (bundleError: any) {
+      console.error("Bundle creation or save failed:", bundleError);
+      alert(`Error saving bundle: ${bundleError.message || bundleError}`);
+      endProc(); // Ensure processing overlay is dismissed
+      setMode('START'); // Return to start mode
+    }
   };
 
   const [manualJson, setManualJson] = useState('');
