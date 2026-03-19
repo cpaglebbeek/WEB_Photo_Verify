@@ -7,6 +7,7 @@ export interface LicenseStatus {
   expiry: number;
   deviceHash: string;
   lastCheck: number;
+  lastUsed?: number;
   message?: string;
   name?: string;
   company?: string;
@@ -60,7 +61,9 @@ export const checkLicense = async (
 
   if (!forceSync && localState && localState.deviceHash === hash && localState.active && (localState.expiry > now || localState.expiry > 4000000000000)) {
     if (now - localState.lastCheck < GRACE_PERIOD) {
-      return { ...localState, message: localState.message || "License Active (Offline)" };
+      const refreshed = { ...localState, lastUsed: now };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(refreshed));
+      return { ...refreshed, message: refreshed.message || "License Active (Offline)" };
     }
   }
 
@@ -94,7 +97,8 @@ export const checkLicense = async (
     return newState;
   } catch (err: any) {
     onLog?.(`[License] Sync failed: ${err.message}`);
-    if (localState && localState.deviceHash === hash && now - localState.lastCheck < GRACE_PERIOD) {
+    const lastValid = localState?.lastUsed ?? localState?.lastCheck ?? 0;
+    if (localState && localState.deviceHash === hash && localState.active && now - lastValid < GRACE_PERIOD) {
       return { ...localState, isGracePeriod: true, message: "Offline Mode (Grace Period)" };
     }
     return { active: false, expiry: 0, deviceHash: hash, lastCheck: 0, message: `Activation Error: ${err.message}` };
