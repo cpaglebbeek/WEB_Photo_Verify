@@ -8,6 +8,7 @@ import TimeAnchorVerifier from './components/TimeAnchorVerifier';
 import LegacyBorderVerifier from './components/LegacyBorderVerifier';
 import ZipVerifier from './components/ZipVerifier';
 import ProcessingOverlay from './components/ProcessingOverlay';
+import MatrixRainCanvas from './components/MatrixRainCanvas';
 import { injectVirtualDataAsync } from './utils/virtualStorage';
 import { sha256, generateCombinedProof } from './utils/timeAnchor';
 import { extractBorderRingRGB } from './utils/forensics';
@@ -78,6 +79,9 @@ function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [safFolderUri, setSafFolderUri] = useState(localStorage.getItem('saf_folder_uri') || null);
   const isInitialized = useRef(false);
+  const splashShown = useRef(false);
+  const [showSplash, setShowSplash] = useState(false);
+  const [splashFading, setSplashFading] = useState(false);
 
   const addLog = (msg: string) => {
     console.log(msg);
@@ -130,6 +134,17 @@ function App() {
   }, [licenseServer, uiUrl, contentUrl, applyUIConfig]);
 
   useEffect(() => { if (!isInitialized.current) { startup(); isInitialized.current = true; } }, [startup]);
+
+  // Matrix splash: 2-second intro on first START entry
+  useEffect(() => {
+    if (mode === 'START' && !splashShown.current) {
+      splashShown.current = true;
+      setShowSplash(true);
+      const t1 = setTimeout(() => setSplashFading(true), 1500);
+      const t2 = setTimeout(() => { setShowSplash(false); setSplashFading(false); }, 2100);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    }
+  }, [mode]);
 
   const [sharedZipBlob, setSharedZipBlob] = useState<Blob | undefined>(undefined);
   const openNativeFilePicker = (mimeType: string, callback: (uri: string) => void) => {
@@ -350,6 +365,17 @@ function App() {
 
   return (
     <div className="App" style={{ fontSize: 'var(--font-size)' }}>
+      {/* Matrix splash — 2-second cinematic intro on first load */}
+      {showSplash && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+          zIndex: 10000, overflow: 'hidden',
+          opacity: splashFading ? 0 : 1,
+          transition: 'opacity 0.6s ease-out',
+        }}>
+          <MatrixRainCanvas />
+        </div>
+      )}
       {isProcessing && <ProcessingOverlay progress={progress} message={processingMsg} />}
       <header className="App-header">
         <div className="header-top">
