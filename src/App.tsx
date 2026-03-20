@@ -79,9 +79,11 @@ function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [safFolderUri, setSafFolderUri] = useState(localStorage.getItem('saf_folder_uri') || null);
   const isInitialized = useRef(false);
-  const splashShown = useRef(false);
+  const splashShownOnce = useRef(false);
+  const splashTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [showSplash, setShowSplash] = useState(false);
   const [splashFading, setSplashFading] = useState(false);
+  const procStartTime = useRef(0);
 
   const addLog = (msg: string) => {
     console.log(msg);
@@ -135,24 +137,36 @@ function App() {
 
   useEffect(() => { if (!isInitialized.current) { startup(); isInitialized.current = true; } }, [startup]);
 
-  // Matrix splash: 2-second intro on first START entry
+  // Matrix splash: 5-second cinematic intro
+  const triggerSplash = useCallback(() => {
+    splashTimers.current.forEach(clearTimeout);
+    setSplashFading(false);
+    setShowSplash(true);
+    const t1 = setTimeout(() => setSplashFading(true), 4400);
+    const t2 = setTimeout(() => { setShowSplash(false); setSplashFading(false); }, 5100);
+    splashTimers.current = [t1, t2];
+  }, []);
+
+  // Trigger splash on first START entry (after license check)
   useEffect(() => {
-    if (mode === 'START' && !splashShown.current) {
-      splashShown.current = true;
-      setShowSplash(true);
-      const t1 = setTimeout(() => setSplashFading(true), 1500);
-      const t2 = setTimeout(() => { setShowSplash(false); setSplashFading(false); }, 2100);
-      return () => { clearTimeout(t1); clearTimeout(t2); };
+    if (mode === 'START' && !splashShownOnce.current) {
+      splashShownOnce.current = true;
+      triggerSplash();
     }
-  }, [mode]);
+  }, [mode, triggerSplash]);
 
   const [sharedZipBlob, setSharedZipBlob] = useState<Blob | undefined>(undefined);
   const openNativeFilePicker = (mimeType: string, callback: (uri: string) => void) => {
     NativeBridge.openFilePicker({ mimeType }).catch(e => addLog(`[App] Native picker failed: ${e.message}`));
   };
 
-  const startProc = (msg: string) => { setProcessingMsg(msg); setProgress(0); setIsProcessing(true); };
-  const endProc = () => { setProgress(100); setTimeout(() => setIsProcessing(false), 500); };
+  const startProc = (msg: string) => { setProcessingMsg(msg); setProgress(0); setIsProcessing(true); procStartTime.current = Date.now(); };
+  const endProc = () => {
+    setProgress(100);
+    const elapsed = Date.now() - procStartTime.current;
+    const remaining = Math.max(500, 10000 - elapsed);
+    setTimeout(() => setIsProcessing(false), remaining);
+  };
 
   const runOneClickShield = async () => {
     if (!sharedImage) return;
@@ -379,7 +393,7 @@ function App() {
       {isProcessing && <ProcessingOverlay progress={progress} message={processingMsg} />}
       <header className="App-header">
         <div className="header-top">
-          <div className="app-branding" onClick={() => setMode('START')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <div className="app-branding" onClick={() => { setMode('START'); triggerSplash(); }} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '15px' }}>
             <img src="appicon.jpg" alt="Logo" style={{ height: '50px', borderRadius: '8px' }} />
             <div style={{ textAlign: 'left' }}>
               <h1 style={{ fontSize: '1.8rem', lineHeight: '1' }}>{content?.ui.title || 'PhotoVerify'} <span style={{ fontSize: '0.8rem', color: '#10b981' }}>v{engineData.engine_version}-v{versionData.current}</span></h1>
@@ -390,7 +404,7 @@ function App() {
             <button className="btn btn-nav" onClick={() => setMode('INFO')} title="Help">ℹ️</button>
             <button className="btn btn-nav" onClick={() => setMode('ABOUT')} title="About">❓</button>
             <button className="btn btn-nav" onClick={() => setMode('SETTINGS')}>⚙️</button>
-            <button className="btn btn-nav" onClick={() => setMode('START')}>🏠 Home</button>
+            <button className="btn btn-nav" onClick={() => { setMode('START'); triggerSplash(); }}>🏠 Home</button>
             <button className="btn btn-nav" onClick={() => setMode('VERIFY')} style={{ background: 'rgba(96, 165, 250, 0.1)', color: '#60a5fa', border: '1px solid #60a5fa' }}>🔍 Audit</button>
             <button className="btn btn-nav btn-success" onClick={() => setMode('SHIELD_AUTO')}>🛡️ Shield</button>
           </div>
