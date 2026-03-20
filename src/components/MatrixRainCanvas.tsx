@@ -2,11 +2,15 @@ import { useEffect, useRef, memo } from 'react';
 
 /**
  * Film-accurate Matrix Digital Rain (The Matrix, 1999)
+ *
+ * Uses semi-transparent fade (not full clear) so trails persist naturally.
+ * This prevents black-screen gaps when streams cycle off-screen.
+ *
  * - Half-width katakana + digits + symbols (original charset)
- * - White glowing head character with green bloom
- * - Long gradient trails fading from bright to dark green
- * - Per-column variable speed and trail length
- * - Character flickering/mutation in trails (~3% per frame)
+ * - White glowing head with green bloom
+ * - Fade-based gradient trails (long, natural decay)
+ * - Per-column variable speed (parallax depth)
+ * - Character flicker/mutation in trail area
  */
 
 const CHARS =
@@ -14,12 +18,6 @@ const CHARS =
   '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ:."=*+-<>|';
 
 const randChar = () => CHARS[Math.floor(Math.random() * CHARS.length)];
-
-interface Stream {
-  head: number;   // row position (fractional, allows sub-row speed)
-  speed: number;  // rows per frame (0.3–1.8 for parallax depth)
-  len: number;    // trail length in rows
-}
 
 export default memo(function MatrixRainCanvas() {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -30,97 +28,113 @@ export default memo(function MatrixRainCanvas() {
     const ctx = cvs.getContext('2d');
     if (!ctx) return;
 
-    const F = 14; // font size — smaller = denser columns = more cinematic
+    const F = 14;
     let cols = 0;
     let rows = 0;
-    let grid: string[][] = [];
+
+    interface Stream {
+      head: number;  // fractional row position
+      speed: number; // rows per frame (0.3–1.8)
+    }
+
     let streams: Stream[] = [];
     let raf = 0;
 
     const mkStream = (): Stream => ({
-      head: Math.random() * -40,
+      head: -(Math.random() * 15),   // small offset → reappears quickly
       speed: 0.3 + Math.random() * 1.5,
-      len: 8 + Math.floor(Math.random() * 26),
     });
 
     const resize = () => {
+      // Save current canvas content before resize
+      const prevW = cvs.width;
+      const prevH = cvs.height;
+      let imgData: ImageData | null = null;
+      if (prevW > 0 && prevH > 0) {
+        imgData = ctx.getImageData(0, 0, prevW, prevH);
+      }
+
       cvs.width = window.innerWidth;
       cvs.height = window.innerHeight;
+      rows = Math.ceil(cvs.height / F) + 2;
       const newCols = Math.floor(cvs.width / F) + 1;
-      const newRows = Math.ceil(cvs.height / F) + 2;
 
-      // Preserve existing streams on resize, extend if needed
-      const prevStreams = streams;
-      grid = Array.from({ length: newCols }, (_, c) =>
-        Array.from({ length: newRows }, (_, r) =>
-          (c < cols && r < rows && grid[c]) ? grid[c][r] : randChar()
-        )
-      );
+      // Restore canvas content (resize clears it)
+      if (imgData) {
+        ctx.putImageData(imgData, 0, 0);
+      }
+
+      const prev = streams;
       streams = Array.from({ length: newCols }, (_, i) =>
-        i < prevStreams.length ? prevStreams[i] : mkStream()
+        i < prev.length ? prev[i] : mkStream()
       );
+
+      // First init: stagger heads across screen for immediate visual
+      if (prev.length === 0) {
+        streams.forEach(s => { s.head = Math.random() * rows; });
+      }
 
       cols = newCols;
-      rows = newRows;
-
-      // On first init, stagger positions so the screen isn't empty
-      if (prevStreams.length === 0) {
-        streams.forEach(s => { s.head = Math.random() * (rows + s.len); });
-      }
     };
 
     resize();
     window.addEventListener('resize', resize);
 
     const tick = () => {
-      ctx.fillStyle = '#000000';
+      // Semi-transparent fade — trails persist and decay naturally
+      // This is the key to continuous rain without black gaps
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
       ctx.fillRect(0, 0, cvs.width, cvs.height);
+
       ctx.font = `${F}px "MS Gothic","Hiragino Kaku Gothic Pro","Courier New",monospace`;
       ctx.textBaseline = 'top';
 
-      // ---- Pass 1: trail characters (no shadow, efficient) ----
+      // ---- Pass 1: bright trail chars behind head + flicker (no shadow) ----
       ctx.shadowBlur = 0;
       for (let c = 0; c < cols; c++) {
         const s = streams[c];
         const hR = Math.floor(s.head);
         const x = c * F;
 
-        for (let t = 1; t <= s.len; t++) {
-          const row = hR - t;
-          if (row < 0 || row >= rows) continue;
+        if (hR >= 0 && hR < rows) {
+          // 3 bright green chars just behind head — explicit gradient
+          ctx.fillStyle = '#00ff41';
+          if (hR - 1 >= 0) ctx.fillText(randChar(), x, (hR - 1) * F);
 
-          // Flicker: mutate ~3% of visible trail chars per frame
-          if (Math.random() < 0.03) grid[c][row] = randChar();
+          ctx.fillStyle = 'rgba(0, 255, 65, 0.7)';
+          if (hR - 2 >= 0) ctx.fillText(randChar(), x, (hR - 2) * F);
 
-          if (t <= 2) {
-            // Near-head: bright green
-            ctx.fillStyle = '#00ff41';
-          } else {
-            // Gradient: bright green → dark green
-            const fade = 1 - (t - 2) / Math.max(1, s.len - 2);
-            const g = Math.floor(80 + fade * 175);
-            const a = Math.max(0.06, fade * 0.85);
-            ctx.fillStyle = `rgba(0,${g},20,${a})`;
+          ctx.fillStyle = 'rgba(0, 255, 65, 0.4)';
+          if (hR - 3 >= 0) ctx.fillText(randChar(), x, (hR - 3) * F);
+        }
+
+        // Random character mutation deep in the trail (film flicker effect)
+        if (Math.random() > 0.92 && hR > 6) {
+          const fRow = hR - (4 + Math.floor(Math.random() * 18));
+          if (fRow >= 0 && fRow < rows) {
+            ctx.fillStyle = `rgba(0,${130 + Math.floor(Math.random() * 125)},25,${0.15 + Math.random() * 0.35})`;
+            ctx.fillText(randChar(), x, fRow * F);
           }
-          ctx.fillText(grid[c][row], x, row * F);
         }
       }
 
-      // ---- Pass 2: head characters (white + green glow bloom) ----
+      // ---- Pass 2: head characters (white + green bloom) ----
       ctx.shadowColor = '#00ff41';
-      ctx.shadowBlur = 18;
-      ctx.fillStyle = '#ffffff';
+      ctx.shadowBlur = 20;
+      ctx.fillStyle = '#e0ffe0';
       for (let c = 0; c < cols; c++) {
         const s = streams[c];
         const hR = Math.floor(s.head);
-        if (hR < 0 || hR >= rows) { s.head += s.speed; continue; }
-        ctx.fillText(grid[c][hR], c * F, hR * F);
+
+        if (hR >= 0 && hR < rows) {
+          ctx.fillText(randChar(), c * F, hR * F);
+        }
 
         // Advance stream
         s.head += s.speed;
 
-        // Reset when trail clears the bottom
-        if ((s.head - s.len) * F > cvs.height) {
+        // Reset when head is well past screen bottom
+        if (hR > rows + 5) {
           Object.assign(s, mkStream());
         }
       }
