@@ -26,6 +26,7 @@ CORE_FILES=(
   "src/components/CopyrightVerifier.tsx"
   "src/components/TimeAnchorVerifier.tsx"
   "src/components/ProcessingOverlay.tsx"
+  "src/components/MatrixRainCanvas.tsx"
   # Components — Creators
   "src/components/CopyrightCreator.tsx"
   "src/components/TimeAnchorCreator.tsx"
